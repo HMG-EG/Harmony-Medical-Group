@@ -1,4 +1,19 @@
-import React, { useState, useEffect } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmony Medical Group</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.3/babel.min.js"></script>
+  <style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #f5f5f7; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback } = React;
+
 
 // ─── Supabase Config ──────────────────────────────────────────────────────────
 const SUPA_URL = "https://huupoodjnmythfgflzoz.supabase.co";
@@ -4370,3 +4385,10 @@ export default function App() {
     </div>
   );
 }
+
+const domNode = document.getElementById('root');
+const root = ReactDOM.createRoot(domNode);
+root.render(React.createElement(App));
+  </script>
+</body>
+</html>
