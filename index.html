@@ -841,13 +841,24 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCountry, setFilterCountry] = useState("all");
-  const getCountry = (lab) => lab?.split("—")[1]?.trim() || "";
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const ar = t.dir === "rtl";
+  const getCountry = (lab) => {
+    if (!lab) return "";
+    if (lab.includes(" - ")) return lab.split(" - ")[1]?.trim() || "";
+    if (lab.includes(" — ")) return lab.split(" — ")[1]?.trim() || "";
+    return "";
+  };
   const filtered = samples.filter(s => {
     const q = search.toLowerCase();
-    const mq = !q || s.patientName?.toLowerCase().includes(q) || s.sampleCode?.toLowerCase().includes(q);
+    const mq = !q || s.patientName?.toLowerCase().includes(q) || s.sampleCode?.toLowerCase().includes(q) || s.testType?.toLowerCase().includes(q);
     const ms = filterStatus==="all" || s.status===filterStatus;
     const mc = filterCountry==="all" || getCountry(s.externalLab)===filterCountry;
-    return mq && ms && mc;
+    const d = s.collectDate || s.sentDate;
+    const mdf = !dateFrom || (d && d >= dateFrom);
+    const mdt = !dateTo || (d && d <= dateTo);
+    return mq && ms && mc && mdf && mdt;
   });
   const countries = ["all", ...new Set(samples.map(s=>getCountry(s.externalLab)).filter(Boolean))];
 
@@ -860,7 +871,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
         </button>
       </div>
 
-      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+      <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 ..."
           style={{flex:1,minWidth:120,...inp(),padding:"10px 14px"}}/>
         <CustomSelect
@@ -875,6 +886,25 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
           options={[{value:"all",label:"🌍 "+(t.dir==="rtl"?"كل البلاد":"All Countries")}, ...countries.filter(c=>c!=="all").map(c=>({value:c,label:`${c} (${samples.filter(s=>getCountry(s.externalLab)===c).length})`}))]}
           style={{width:"auto",minWidth:140}}
         />
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:200}}>
+          <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}>📅 {ar?"من":"From"}</span>
+          <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
+            style={{...inp(),padding:"8px 10px",fontSize:13,flex:1}}/>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:200}}>
+          <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}>📅 {ar?"إلى":"To"}</span>
+          <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
+            style={{...inp(),padding:"8px 10px",fontSize:13,flex:1}}/>
+        </div>
+        {(dateFrom||dateTo) && (
+          <button onClick={()=>{setDateFrom("");setDateTo("");}}
+            style={{background:"none",border:"1px solid #e5e5e5",color:"#888",borderRadius:7,padding:"7px 12px",cursor:"pointer",fontSize:12}}>
+            ✕ {ar?"مسح":"Clear"}
+          </button>
+        )}
+        <span style={{fontSize:12,color:"#aaa"}}>{filtered.length} {ar?"عينة":"samples"}</span>
       </div>
 
       {filtered.length===0 && (
