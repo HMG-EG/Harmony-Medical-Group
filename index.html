@@ -1929,7 +1929,7 @@ function ShipmentsPage({ t, samples, setSamples }) {
   const createShipment = () => {
     if (!newShipId.trim() || selectedPatients.length === 0) return;
     setSamples(p => p.map(s =>
-      selectedPatients.includes(s.id) ? {...s, shipmentNumber: newShipId.trim(), sentDate: newShipDate||s.sentDate} : s
+      selectedPatients.includes(s.id) ? {...s, shipmentNumber: newShipId.trim(), sentDate: newShipDate||s.sentDate, status: "sent"} : s
     ));
     setShowNewModal(false);
     setNewShipId("");
