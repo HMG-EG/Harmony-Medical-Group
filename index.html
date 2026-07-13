@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Harmony Medical Group</title>
-  <meta name="description" content="Harmony Medical Group - Sample Tracking & Lab Management System for genomic diagnostics in Egypt and MENA region">
+  <meta name="description" content="Harmony Medical Group - Sample Tracking & Lab Management System">
   <meta name="keywords" content="Harmony Medical Group, lab samples, genomic diagnostics, Egypt, MENA">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://hmg-eg.github.io/Harmony-Medical-Group/">
@@ -1933,16 +1933,35 @@ function ShipmentsPage({ t, samples, setSamples }) {
     return counts;
   };
 
-  const createShipment = () => {
+  const createShipment = async () => {
     if (!newShipId.trim() || selectedPatients.length === 0) return;
-    setSamples(p => p.map(s =>
-      selectedPatients.includes(s.id) ? {...s, shipmentNumber: newShipId.trim(), sentDate: newShipDate||s.sentDate, status: "sent"} : s
-    ));
+    const shipId = newShipId.trim();
+    const shipDate = newShipDate;
+    setSamples(p => {
+      const next = p.map(s =>
+        selectedPatients.includes(s.id) ? {...s, shipmentNumber: shipId, sentDate: shipDate||s.sentDate, status: "sent"} : s
+      );
+      // Save to localStorage immediately
+      try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
+      // Save updated samples to Supabase
+      const toSave = next.filter(s => selectedPatients.includes(s.id));
+      toSave.forEach(async s => {
+        try {
+          await fetch(`${SUPA_URL}/rest/v1/samples`, {
+            method:"POST",
+            headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
+            body:JSON.stringify([{id:s.id,data:JSON.stringify({...s,resultPdf:null})}])
+          });
+        } catch {}
+      });
+      return next;
+    });
     setShowNewModal(false);
     setNewShipId("");
+    setNewShipDate(new Date().toISOString().slice(0,10));
     setSelectedPatients([]);
     setPatientSearch("");
-    setSelected(newShipId.trim());
+    setSelected(shipId);
   };
 
   const togglePatient = (id) => {
@@ -1959,14 +1978,28 @@ function ShipmentsPage({ t, samples, setSamples }) {
 
   const saveEdit = () => {
     if (!editShipId.trim()) return;
-    setSamples(p => p.map(s => {
-      const wasInShipment = s.shipmentNumber === editModal;
-      const isSelected = selectedPatients.includes(s.id);
-      if (wasInShipment && !isSelected) return {...s, shipmentNumber:""};          // removed
-      if (!wasInShipment && isSelected) return {...s, shipmentNumber:editShipId.trim()}; // added
-      if (wasInShipment && isSelected) return {...s, shipmentNumber:editShipId.trim()}; // renamed
-      return s;
-    }));
+    setSamples(p => {
+      const next = p.map(s => {
+        const wasInShipment = s.shipmentNumber === editModal;
+        const isSelected = selectedPatients.includes(s.id);
+        if (wasInShipment && !isSelected) return {...s, shipmentNumber:""};
+        if (!wasInShipment && isSelected) return {...s, shipmentNumber:editShipId.trim()};
+        if (wasInShipment && isSelected) return {...s, shipmentNumber:editShipId.trim()};
+        return s;
+      });
+      try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
+      // Save changed samples to Supabase
+      next.filter(s => s.shipmentNumber===editShipId.trim() || selectedPatients.includes(s.id)).forEach(async s => {
+        try {
+          await fetch(`${SUPA_URL}/rest/v1/samples`, {
+            method:"POST",
+            headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
+            body:JSON.stringify([{id:s.id,data:JSON.stringify({...s,resultPdf:null})}])
+          });
+        } catch {}
+      });
+      return next;
+    });
     setEditModal(null);
     setSelectedPatients([]);
     setPatientSearch("");
@@ -1975,7 +2008,21 @@ function ShipmentsPage({ t, samples, setSamples }) {
 
   const deleteShipment = (shipNum) => {
     if (!window.confirm(ar?`هل تريد حذف الشحنة ${shipNum}؟`:`Delete shipment ${shipNum}?`)) return;
-    setSamples(p => p.map(s => s.shipmentNumber===shipNum ? {...s, shipmentNumber:""} : s));
+    setSamples(p => {
+      const next = p.map(s => s.shipmentNumber===shipNum ? {...s, shipmentNumber:""} : s);
+      try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
+      // Update affected samples in Supabase
+      next.filter(s => !s.shipmentNumber && p.find(x=>x.id===s.id)?.shipmentNumber===shipNum).forEach(async s => {
+        try {
+          await fetch(`${SUPA_URL}/rest/v1/samples`, {
+            method:"POST",
+            headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
+            body:JSON.stringify([{id:s.id,data:JSON.stringify({...s,resultPdf:null})}])
+          });
+        } catch {}
+      });
+      return next;
+    });
     if (selected===shipNum) setSelected(null);
     setEditModal(null);
   };
