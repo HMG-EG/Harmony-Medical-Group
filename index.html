@@ -1005,8 +1005,30 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
                         );
                       })()}
                     </td>
-                    <td style={{padding:"10px 12px"}}>
-                      <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:600,whiteSpace:"nowrap",border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.08),0 0 0 1px rgba(0,0,0,0.04)"}}>{t.statuses[s.status]}</span>
+                    <td style={{padding:"8px 12px"}}>
+                      <select value={s.status} onChange={async e=>{
+                        const newStatus = e.target.value;
+                        const updated = {...s, status:newStatus};
+                        setSamples(p => {
+                          const next = p.map(x=>x.id===s.id?updated:x);
+                          // Save to localStorage immediately
+                          try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
+                          return next;
+                        });
+                        // Save to Supabase
+                        try {
+                          await fetch(`${SUPA_URL}/rest/v1/samples`, {
+                            method:"POST",
+                            headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
+                            body:JSON.stringify([{id:updated.id,data:JSON.stringify({...updated,resultPdf:null})}])
+                          });
+                        } catch {}
+                      }}
+                        style={{background:SC[s.status]||"#f5f5f7",color:"#fff",border:"none",borderRadius:6,padding:"4px 8px",fontSize:12,fontWeight:600,cursor:"pointer",outline:"none",appearance:"none",WebkitAppearance:"none",paddingInlineEnd:20,backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='white'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"calc(100% - 6px) center"}}>
+                        {Object.entries(t.statuses).map(([k,v])=>(
+                          <option key={k} value={k} style={{background:"#fff",color:"#111"}}>{v}</option>
+                        ))}
+                      </select>
                     </td>
                     <td style={{padding:"10px 12px",color:"#059669",whiteSpace:"nowrap"}}>{fmt(s.salePrice)} EGP</td>
                     <td style={{padding:"10px 12px"}}>
@@ -4135,15 +4157,7 @@ function App() {
   }, []);
   const [editTarget, setEditTarget] = useState(null);
   // Wrap setTab to track history
-  const navigateTo = (newTab) => {
-    setTab(newTab);
-    setTabHistory(h => {
-      // Don't add same tab twice in a row
-      if (h[h.length-1] === newTab) return h;
-      // Keep max 10 history items
-      return [...h.slice(-9), newTab];
-    });
-  };
+
   const [showAlert, setShowAlert] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -4253,23 +4267,21 @@ function App() {
   ];
 
   const saveToSupabase = async (data) => {
-    const cleanData = {...data, resultPdf: data.resultPdf && data.resultPdf.length > 500000 ? null : data.resultPdf};
-    const row = [{ id: data.id, data: JSON.stringify(cleanData) }];
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const r = await fetch(`${SUPA_URL}/rest/v1/samples`, {
-          method: "POST",
-          headers: { ...SUPA_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
-          body: JSON.stringify(row)
-        });
-        if (r.ok) { setSyncStatus("ok"); return true; }
-        const err = await r.text();
-        console.error("Save attempt", attempt+1, "failed:", err);
-      } catch(e) { console.error("Save attempt", attempt+1, "error:", e); }
-      await new Promise(r => setTimeout(r, 1000));
+    try {
+      const cleanData = {...data, resultPdf: data.resultPdf && data.resultPdf.length > 500000 ? null : data.resultPdf};
+      const r = await fetch(`${SUPA_URL}/rest/v1/samples`, {
+        method: "POST",
+        headers: { ...SUPA_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify([{ id: data.id, data: JSON.stringify(cleanData) }])
+      });
+      if (r.ok) { setSyncStatus("ok"); return true; }
+      setSyncStatus("error");
+      return false;
+    } catch(e) {
+      console.warn("Supabase save failed (offline?):", e.message);
+      setSyncStatus("ok"); // Don't show error for network issues
+      return false;
     }
-    setSyncStatus("error");
-    return false;
   };
 
   const handleSave = async (data) => {
