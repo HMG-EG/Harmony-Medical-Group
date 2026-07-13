@@ -487,6 +487,7 @@ function SearchableSelect({ value, onChange, options, placeholder, error, allowC
 // ─── SampleForm ───────────────────────────────────────────────────────────────
 function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
   const mob = useIsMobile();
+  const ar = t.dir === "rtl";
   const existing = editTarget ? samples.find(s => s.id === editTarget) : null;
   const BASE_CLIENTS = ["Alfa labs","Colors lab","Dr. Sara Hisham","Romex-IPS","Air force Hospital","Alshefa labs","Acculab","Amr KSA","Dr. Wafaa elmtnawi","NX gen","Nile labs"];
   const [extraClients, setExtraClients] = React.useState(() => {
@@ -549,7 +550,26 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
     if (!validate()) return;
     setSaving(true);
     await new Promise(r => setTimeout(r, 500));
-    onSave({...f, id: editTarget || f.sampleCode, sentDate: f.sentDate || new Date().toISOString().slice(0,10)});
+    const baseDate = f.sentDate || new Date().toISOString().slice(0,10);
+    // Save main sample
+    onSave({...f, id: editTarget || f.sampleCode, sentDate: baseDate});
+    // Save extra tests as separate samples
+    if (!editTarget && f.extraTests && f.extraTests.length > 0) {
+      for (const et of f.extraTests) {
+        if (et.testType || et.sampleCode) {
+          const extraSample = {
+            ...f,
+            id: et.sampleCode || uid(),
+            sampleCode: et.sampleCode || uid(),
+            testType: et.testType || f.testType,
+            sentDate: baseDate,
+            extraTests: []
+          };
+          onSave(extraSample);
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+    }
     setSaving(false); setSaved(true);
     setTimeout(() => onCancel(), 900);
   };
@@ -648,14 +668,15 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
         {/* ── SAMPLE ── */}
         <SecLabel title={t.form.sec2}/>
         <div style={{display:"grid",gridTemplateColumns:col2,gap:"0 20px"}}>
-          <Field label={t.form.sampleCode+" *"} error={errors.sampleCode} hint={!editTarget?t.dir==="rtl"?"يُنشأ تلقائياً — قابل للتعديل":"Auto-generated — editable":null}>
-            <input value={f.sampleCode} onChange={e=>set("sampleCode",e.target.value)} placeholder={t.form.sampleCodePh} style={{...inp(errors.sampleCode),fontFamily:"monospace",letterSpacing:"0.5px"}}/>
-          </Field>
           <Field label={t.form.collectDate}>
             <input type="date" value={f.collectDate||""} onChange={e=>set("collectDate",e.target.value)} style={inp()}/>
           </Field>
           <Field label={t.form.shipmentNumber}>
             <input value={f.shipmentNumber||""} onChange={e=>set("shipmentNumber",e.target.value)} placeholder={t.form.shipmentNumberPh} style={inp()}/>
+          </Field>
+
+          <Field label={t.form.sampleCode+" *"} error={errors.sampleCode} hint={!editTarget?t.dir==="rtl"?"يُنشأ تلقائياً — قابل للتعديل":"Auto-generated — editable":null}>
+            <input value={f.sampleCode} onChange={e=>set("sampleCode",e.target.value)} placeholder={t.form.sampleCodePh} style={{...inp(errors.sampleCode),fontFamily:"monospace",letterSpacing:"0.5px"}}/>
           </Field>
           <div style={{gridColumn:"1/-1"}}>
             <Field label={t.form.testType+" *"} error={errors.testType}>
@@ -666,21 +687,16 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
                   else{
                     set("_testOther",false);
                     set("testType",v);
-                    // Auto-fill lab and TAT from tests data
                     const found = [...BUILTIN_TESTS,...allExtraTests].find(t=>t.name===v);
                     if(found){
                       if(found.lab && found.lab!=="Other"){
-                        // Map lab name to match t.labs format
                         const labMatch = (t.labs||[]).find(l=>l.includes(found.lab.split(" - ")[0]) || found.lab.includes(l.split(" — ")[0]));
                         if(labMatch){set("_labOther",false);set("externalLab",labMatch);}
                       }
                     }
                   }
                 }}
-                options={[
-                  ...allTests.map(x=>({value:x,label:x})),
-                  {value:"Other",label:t.dir==="rtl"?"أخرى (اكتب بنفسك)":"Other (type manually)"}
-                ]}
+                options={[...allTests.map(x=>({value:x,label:x})),{value:"Other",label:t.dir==="rtl"?"أخرى (اكتب بنفسك)":"Other (type manually)"}]}
                 placeholder={t.dir==="rtl"?"ابحث أو اختر نوع الفحص...":"Search or select test type..."}
                 error={errors.testType}
                 allowCustom={false}
@@ -691,6 +707,36 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
                   style={{...inp(),marginTop:8}} autoFocus/>
               )}
             </Field>
+          </div>
+
+          {/* Extra Tests */}
+          <div style={{gridColumn:"1/-1"}}>
+            {(f.extraTests||[]).map((et, idx) => (
+              <div key={idx} style={{background:"#f9fafb",border:"1px solid #e5e5e5",borderRadius:10,padding:14,marginBottom:8,position:"relative"}}>
+                <button onClick={()=>set("extraTests",(f.extraTests||[]).filter((_,i)=>i!==idx))}
+                  style={{position:"absolute",top:8,insetInlineEnd:8,background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:16,padding:"2px 6px"}}>✕</button>
+                <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:10}}>
+                  <div>
+                    <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:4}}>{t.form.sampleCode}</label>
+                    <input value={et.sampleCode||""} onChange={e=>set("extraTests",(f.extraTests||[]).map((x,i)=>i===idx?{...x,sampleCode:e.target.value}:x))}
+                      placeholder={t.form.sampleCodePh} style={{...inp(),fontFamily:"monospace"}}/>
+                  </div>
+                  <div>
+                    <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:4}}>{t.form.testType}</label>
+                    <SearchableSelect
+                      value={et.testType||""}
+                      onChange={v=>set("extraTests",(f.extraTests||[]).map((x,i)=>i===idx?{...x,testType:v}:x))}
+                      options={[...allTests.map(x=>({value:x,label:x})),{value:"Other",label:ar?"أخرى":"Other"}]}
+                      placeholder={ar?"ابحث عن تحليل...":"Search test..."}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button onClick={()=>set("extraTests",[...(f.extraTests||[]),{sampleCode:uid(),testType:""}])}
+              style={{width:"100%",background:"#fff",border:"1.5px dashed #e5e5e5",borderRadius:10,padding:"10px",cursor:"pointer",fontSize:13,color:"#888",fontWeight:500}}>
+              + {ar?"إضافة تحليل آخر":"Add another test"}
+            </button>
           </div>
           <Field label={t.form.externalLab+" *"} error={errors.externalLab}>
             <SearchableSelect
@@ -2305,8 +2351,18 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
   // Invoice can group by Client (hospital) OR External Lab
   const [groupBy, setGroupBy] = React.useState("client"); // "client" | "lab"
 
+  const [filterCountry, setFilterCountry] = React.useState("all");
+
+  const getCountry = (lab) => {
+    if (!lab) return "";
+    if (lab.includes(" - ")) return lab.split(" - ")[1]?.trim() || "";
+    if (lab.includes(" — ")) return lab.split(" — ")[1]?.trim() || "";
+    return "";
+  };
+
   const allClients = [...new Set(samples.map(s=>s.hospital).filter(Boolean))].sort();
   const allLabs    = [...new Set(samples.map(s=>s.externalLab).filter(Boolean))].sort();
+  const allCountries = ["all", ...new Set(samples.map(s=>getCountry(s.externalLab)).filter(Boolean)).values()].sort();
 
   const filtered = samples.filter(s => {
     const d = s.collectDate || s.sentDate;
@@ -2314,6 +2370,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
     if (client !== "all" && groupKey !== client) return false;
     if (dateFrom && d && d < dateFrom) return false;
     if (dateTo   && d && d > dateTo)   return false;
+    if (filterCountry !== "all" && getCountry(s.externalLab) !== filterCountry) return false;
     return true;
   });
 
