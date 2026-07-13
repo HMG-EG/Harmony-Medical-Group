@@ -2504,7 +2504,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
 
       {/* Filters */}
       <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
-        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:12,alignItems:"end"}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr 1fr",gap:12,alignItems:"end"}}>
           <div>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>📅 {ar?"من":"From"}</label>
             <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{...inp(),padding:"9px 12px",fontSize:13}}/>
@@ -2512,6 +2512,14 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
           <div>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>📅 {ar?"إلى":"To"}</label>
             <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{...inp(),padding:"9px 12px",fontSize:13}}/>
+          </div>
+          <div>
+            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>🌍 {ar?"البلد":"Country"}</label>
+            <CustomSelect
+              value={filterCountry}
+              onChange={v=>{setFilterCountry(v);setClient("all");}}
+              options={allCountries.map(c=>({value:c,label:c==="all"?(ar?"كل البلاد":"All Countries"):c}))}
+            />
           </div>
           <div>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>👥 {ar?"العميل":"Client"}</label>
