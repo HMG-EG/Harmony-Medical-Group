@@ -140,7 +140,7 @@ const T = {
       doctor:"الطبيب المحيل", doctorPh:"د. سامي عبدالله",
       hospital:"العميل", hospitalPh:"مثال: Alfa labs",
       sampleCode:"كود العينة", sampleCodePh:"مثال: 2024-001", shipmentNumber:"رقم الشحنة", shipmentNumberPh:"مثال: SHP-2024-001",
-      testType:"نوع الفحص", sentDate:"تاريخ الإرسال", collectDate:"تاريخ التجميع",
+      testType:"نوع الفحص", sentDate:"تاريخ الإرسال", collectDate:"تاريخ التجميع", travelDate:"تاريخ السفر",
       externalLab:"المعمل الخارجي", status:"حالة العينة",
       notes:"ملاحظات", notesPh:"أي ملاحظات إضافية...",
       labCost:"تكلفة المعمل (EGP)", labCostPh:"المبلغ اللي بتدفعه للمعمل",
@@ -180,7 +180,7 @@ const T = {
       doctor:"Referring Doctor", doctorPh:"Dr. Samy Abdullah",
       hospital:"Client", hospitalPh:"e.g. Alfa labs",
       sampleCode:"Sample Code", sampleCodePh:"مثال: 2024-001",
-      testType:"Test Type", sentDate:"Send Date", collectDate:"Collect Date",
+      testType:"Test Type", sentDate:"Send Date", collectDate:"Collect Date", travelDate:"Travel Date",
       externalLab:"External Lab", status:"Status",
       notes:"Notes", notesPh:"Any additional notes...",
       labCost:"Lab Cost (EGP)", labCostPh:"Amount paid to lab",
@@ -521,7 +521,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
   const getTestTAT = (name) => customTATMap[name] || TAT_MAP[name] || {max:10,tat:"10 days"};
   const [f, setF] = useState(existing ? {...existing, _hospitalOther: existing.hospital && !clientsList.includes(existing.hospital), _labOther: existing.externalLab && !labsList.includes(existing.externalLab)} : {
     patientName:"", age:"", gender:"male", hospital:"", _hospitalOther:false, sampleCode:uid(), shipmentNumber:"",
-    testType:"", collectDate:new Date().toISOString().slice(0,10), sentDate:new Date().toISOString().slice(0,10),
+    testType:"", collectDate:new Date().toISOString().slice(0,10), sentDate:new Date().toISOString().slice(0,10), travelDate:"",
     externalLab:"", _labOther:false, testType:"", _testOther:false, status:"received", notes:"",
     labCost:"", salePrice:"", deposit:"0", paymentStatus:"unpaid"
   });
@@ -670,6 +670,9 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
         <div style={{display:"grid",gridTemplateColumns:col2,gap:"0 20px"}}>
           <Field label={t.form.collectDate}>
             <input type="date" value={f.collectDate||""} onChange={e=>set("collectDate",e.target.value)} style={inp()}/>
+          </Field>
+          <Field label={t.form.travelDate||"Travel Date"}>
+            <input type="date" value={f.travelDate||""} onChange={e=>set("travelDate",e.target.value)} style={inp()}/>
           </Field>
           <Field label={t.form.shipmentNumber}>
             <input value={f.shipmentNumber||""} onChange={e=>set("shipmentNumber",e.target.value)} placeholder={t.form.shipmentNumberPh} style={inp()}/>
