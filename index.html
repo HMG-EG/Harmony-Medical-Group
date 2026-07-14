@@ -1902,6 +1902,8 @@ function ShipmentsPage({ t, samples, setSamples }) {
   const [editingShipment, setEditingShipment] = useState(null);
   const [newShipNum, setNewShipNum] = useState("");
   const [editShipId, setEditShipId] = useState("");        // rename shipment number
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   // Group samples by shipmentNumber
   const shipmentMap = {};
@@ -1916,9 +1918,26 @@ function ShipmentsPage({ t, samples, setSamples }) {
   const unassigned = samples.filter(s => !s.shipmentNumber?.trim());
 
   const shipmentKeys = Object.keys(shipmentMap)
-    .filter(k => !search || k.toLowerCase().includes(search.toLowerCase()) ||
-      shipmentMap[k].some(s => s.patientName?.toLowerCase().includes(search.toLowerCase())))
-    .sort((a,b) => a.localeCompare(b));
+    .filter(k => {
+      // Search filter
+      if (search && !k.toLowerCase().includes(search.toLowerCase()) &&
+          !shipmentMap[k].some(s => s.patientName?.toLowerCase().includes(search.toLowerCase()))) return false;
+      // Date filter - check if any sample in shipment matches date range
+      if (filterDateFrom || filterDateTo) {
+        const dates = shipmentMap[k].map(s => s.sentDate || s.collectDate).filter(Boolean);
+        if (dates.length === 0) return false;
+        const shipDate = dates[0];
+        if (filterDateFrom && shipDate < filterDateFrom) return false;
+        if (filterDateTo && shipDate > filterDateTo) return false;
+      }
+      return true;
+    })
+    .sort((a,b) => {
+      // Sort by date descending
+      const da = (shipmentMap[a][0]?.sentDate||"");
+      const db = (shipmentMap[b][0]?.sentDate||"");
+      return db.localeCompare(da);
+    });
 
   const updateSampleShipment = (id, newNum) => {
     setSamples(p => p.map(s => s.id===id ? {...s, shipmentNumber: newNum.trim()} : s));
