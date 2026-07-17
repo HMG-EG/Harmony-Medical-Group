@@ -3572,7 +3572,9 @@ function TestsPage({ t, isAdmin }) {
     try { localStorage.setItem("harmony_price_overrides", JSON.stringify(updated)); } catch {}
     saveToCloud("price_overrides", updated);
   };
-  const [rates, setRates] = React.useState({ USD:1, AED:3.67, EGP:50, EUR:0.92, GBP:0.79 });
+  const [rates, setRates] = React.useState(() => {
+    try { const r = JSON.parse(localStorage.getItem("harmony_fx_rates")||"null"); return r || { USD:1, AED:3.67, EGP:50, EUR:0.92, GBP:0.79 }; } catch { return { USD:1, AED:3.67, EGP:50, EUR:0.92, GBP:0.79 }; }
+  });
   const [ratesLoading, setRatesLoading] = React.useState(false);
   const [ratesUpdated, setRatesUpdated] = React.useState(null);
 
@@ -3582,7 +3584,9 @@ function TestsPage({ t, isAdmin }) {
       const r = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
       const data = await r.json();
       if (data.rates) {
-        setRates({ USD:1, AED:data.rates.AED||3.67, EGP:data.rates.EGP||50, EUR:data.rates.EUR||0.92, GBP:data.rates.GBP||0.79 });
+        const newRates = { USD:1, AED:data.rates.AED||3.67, EGP:data.rates.EGP||50, EUR:data.rates.EUR||0.92, GBP:data.rates.GBP||0.79 };
+        setRates(newRates);
+        try { localStorage.setItem("harmony_fx_rates", JSON.stringify(newRates)); } catch {}
         setRatesUpdated(new Date().toLocaleTimeString());
       }
     } catch {}
