@@ -150,7 +150,7 @@ const T = {
       externalLab:"المعمل الخارجي", status:"حالة العينة",
       notes:"ملاحظات", notesPh:"أي ملاحظات إضافية...",
       labCost:"تكلفة المعمل (EGP)", labCostPh:"المبلغ اللي بتدفعه للمعمل",
-      salePrice:"سعر البيع (EGP)", salePricePh:"المبلغ اللي بتاخده من المريض",
+      salePrice:"سعر البيع", salePricePh:"المبلغ اللي بتاخده من المريض",
       deposit:"عربون مدفوع (EGP)", depositPh:"0",
       paymentStatus:"حالة الدفع",
       margin:"هامش الربح", remaining:"المتبقي للتحصيل",
@@ -190,7 +190,7 @@ const T = {
       externalLab:"External Lab", status:"Status",
       notes:"Notes", notesPh:"Any additional notes...",
       labCost:"Lab Cost (EGP)", labCostPh:"Amount paid to lab",
-      salePrice:"Sale Price (EGP)", salePricePh:"Amount charged to patient",
+      salePrice:"Sale Price", salePricePh:"Amount charged to patient",
       deposit:"Deposit (EGP)", depositPh:"0",
       paymentStatus:"Payment Status",
       margin:"Profit Margin", remaining:"Remaining",
@@ -718,11 +718,15 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
                         if(labMatch){set("_labOther",false);set("externalLab",labMatch);}
                         else{set("_labOther",true);set("externalLab",found.lab);}
                       }
-                      // Auto-fill price (use price override if exists)
+                      // Auto-fill price with original currency
                       const effectivePrice = priceOverrides[found.name] !== undefined
                         ? Number(priceOverrides[found.name])
                         : Number(found.price||0);
-                      if(effectivePrice > 0) set("salePrice", effectivePrice);
+                      const currency = found.currency || "USD";
+                      if(effectivePrice > 0) {
+                        set("salePrice", effectivePrice);
+                        set("saleCurrency", currency);
+                      }
                     }
                   }
                 }}
