@@ -495,6 +495,20 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
   const mob = useIsMobile();
   const ar = t.dir === "rtl";
   const existing = editTarget ? samples.find(s => s.id === editTarget) : null;
+  
+  // Load price overrides from Supabase/localStorage
+  const [priceOverrides, setPriceOverrides] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem("harmony_price_overrides") || "{}"); } catch { return {}; }
+  });
+  React.useEffect(() => {
+    loadFromCloud("price_overrides").then(v => {
+      if (v && typeof v === "object") {
+        setPriceOverrides(v);
+        try { localStorage.setItem("harmony_price_overrides", JSON.stringify(v)); } catch {}
+      }
+    });
+  }, []);
+
   const BASE_CLIENTS = ["Alfa labs","Colors lab","Dr. Sara Hisham","Romex-IPS","Air force Hospital","Alshefa labs","Acculab","Amr KSA","Dr. Wafaa elmtnawi","NX gen","Nile labs"];
   const [extraClients, setExtraClients] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem("harmony_custom_clients") || "[]"); } catch { return []; }
