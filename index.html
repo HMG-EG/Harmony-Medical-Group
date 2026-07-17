@@ -698,10 +698,17 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
                     set("testType",v);
                     const found = [...BUILTIN_TESTS,...allExtraTests].find(t=>t.name===v);
                     if(found){
+                      // Auto-fill lab
                       if(found.lab && found.lab!=="Other"){
                         const labMatch = (t.labs||[]).find(l=>l.includes(found.lab.split(" - ")[0]) || found.lab.includes(l.split(" — ")[0]));
                         if(labMatch){set("_labOther",false);set("externalLab",labMatch);}
+                        else{set("_labOther",true);set("externalLab",found.lab);}
                       }
+                      // Auto-fill price (use price override if exists)
+                      const effectivePrice = priceOverrides[found.name] !== undefined
+                        ? Number(priceOverrides[found.name])
+                        : Number(found.price||0);
+                      if(effectivePrice > 0) set("salePrice", effectivePrice);
                     }
                   }
                 }}
