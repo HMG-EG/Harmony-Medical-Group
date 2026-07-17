@@ -4570,11 +4570,13 @@ function App() {
     ["results","✅",t.nav.results],
     ["clients","👥",t.nav.clients],
     ["shipments","🚚",t.nav.shipments],
-    ["accounting","💰",t.nav.accounting],
-    ...(isAdmin?[["tests","🔬",t.nav.tests]]:[]),
-    ["addtest","➕",t.nav.addTest],
-    ["clientsbook","👥",t.nav.clientsBook],
-    ["invoice","🧾",t.nav.invoice],
+    ...(isAdmin?[
+      ["accounting","💰",t.nav.accounting],
+      ["tests","🔬",t.nav.tests],
+      ["addtest","➕",t.nav.addTest],
+      ["clientsbook","👥",t.nav.clientsBook],
+      ["invoice","🧾",t.nav.invoice],
+    ]:[]),
     ["settings","⚙️",t.nav.settings],
   ];
 
@@ -4862,14 +4864,14 @@ function App() {
 
           {tab==="form" && <SampleForm t={t} samples={samples} editTarget={editTarget} onSave={handleSave} onCancel={()=>{navigateTo("samples");setEditTarget(null);}} isAdmin={isAdmin}/>}
           {tab==="samples" && <SamplesPage t={t} samples={samples} setSamples={setSamples} onEdit={handleEdit} onDelete={handleDelete} onAddNew={()=>{setEditTarget(null);setTab("form");}} lang={lang} isAdmin={isAdmin}/>}
-          {tab==="accounting" && <Accounting t={t} samples={samples} setSamples={setSamples}/>}
+          {tab==="accounting" && isAdmin && <Accounting t={t} samples={samples} setSamples={setSamples}/>}
           {tab==="clients" && <ClientsPage t={t} samples={samples} isAdmin={isAdmin}/>}
           {tab==="results" && <ResultsPage t={t} samples={samples} setSamples={setSamples}/>}
           {tab==="addtest" && <AddTestPage t={t}/>}
           {tab==="tests" && isAdmin && <TestsPage t={t} isAdmin={isAdmin}/>}
           {tab==="shipments" && <ShipmentsPage t={t} samples={samples} setSamples={setSamples} onRefresh={loadSamplesFromSupabase}/>}
           {tab==="settings" && <SettingsPage t={t} currentUser={currentUser} setCurrentUser={setCurrentUser} isAdmin={isAdmin} onLogout={handleLogout}/>}
-          {tab==="invoice" && <InvoicePage t={t} samples={samples} setSamples={setSamples} isAdmin={isAdmin}/>}
+          {tab==="invoice" && isAdmin && <InvoicePage t={t} samples={samples} setSamples={setSamples} isAdmin={isAdmin}/>}
           {tab==="clientsbook" && <ClientsBookPage t={t} isAdmin={isAdmin}/>}
         </div>
       </div>
