@@ -11,6 +11,7 @@
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #f5f5f7; font-family: system-ui, sans-serif; }
@@ -113,6 +114,99 @@ const saveToCloud = async (key, value) => {
     return r.ok;
   } catch { return false; }
 };
+// ─── Reliable sample upsert with retry queue ─────────────────────────────────
+// Any sample change goes through here. If Supabase is unreachable, the change is
+// queued in localStorage and retried automatically until it succeeds, so no edit
+// is ever lost and every device eventually converges on the same data.
+const PENDING_KEY = "harmony_pending_upserts";
+
+const _getPending = () => {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || "{}"); } catch { return {}; }
+};
+const _setPending = (obj) => {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(obj)); } catch {}
+};
+
+const _stripPdf = (s) => ({ ...s, resultPdf: s.resultPdf && s.resultPdf.length > 500000 ? null : s.resultPdf });
+
+// Push one sample to Supabase. Returns true on success. On failure, the sample is
+// added to the pending queue for later retry.
+const upsertSample = async (sample) => {
+  const clean = _stripPdf(sample);
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/samples`, {
+      method: "POST",
+      headers: { ...SUPA_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify([{ id: sample.id, data: JSON.stringify(clean) }]),
+    });
+    if (r.ok) return true;
+  } catch {}
+  // Failed - queue it
+  const pending = _getPending();
+  pending[sample.id] = clean;
+  _setPending(pending);
+  return false;
+};
+
+// Push many samples in batches. Queues any that fail.
+const upsertSamples = async (samples) => {
+  let ok = 0;
+  for (let i = 0; i < samples.length; i += 20) {
+    const batch = samples.slice(i, i + 20).map(_stripPdf);
+    try {
+      const r = await fetch(`${SUPA_URL}/rest/v1/samples`, {
+        method: "POST",
+        headers: { ...SUPA_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(batch.map(s => ({ id: s.id, data: JSON.stringify(s) }))),
+      });
+      if (r.ok) { ok += batch.length; continue; }
+    } catch {}
+    // Queue whole batch on failure
+    const pending = _getPending();
+    batch.forEach(s => { pending[s.id] = s; });
+    _setPending(pending);
+  }
+  return ok;
+};
+
+// Retry everything in the pending queue. Called on a timer and after saves.
+const flushPending = async () => {
+  const pending = _getPending();
+  const ids = Object.keys(pending);
+  if (!ids.length) return;
+  const remaining = {};
+  for (let i = 0; i < ids.length; i += 20) {
+    const chunk = ids.slice(i, i + 20);
+    const rows = chunk.map(id => ({ id, data: JSON.stringify(pending[id]) }));
+    try {
+      const r = await fetch(`${SUPA_URL}/rest/v1/samples`, {
+        method: "POST",
+        headers: { ...SUPA_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(rows),
+      });
+      if (!r.ok) chunk.forEach(id => { remaining[id] = pending[id]; });
+    } catch {
+      chunk.forEach(id => { remaining[id] = pending[id]; });
+    }
+  }
+  _setPending(remaining);
+};
+
+const deleteSample = async (id) => {
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/samples?id=eq.${encodeURIComponent(id)}`, {
+      method: "DELETE", headers: SUPA_HEADERS,
+    });
+    if (r.ok) {
+      // Also drop from pending queue if present
+      const pending = _getPending();
+      if (pending[id]) { delete pending[id]; _setPending(pending); }
+      return true;
+    }
+  } catch {}
+  return false;
+};
+
 const loadFromCloud = async (key) => {
   try {
     const r = await fetch(`${SUPA_URL}/rest/v1/app_settings?key=eq.${key}&select=value`, { headers: SUPA_HEADERS });
@@ -946,13 +1040,81 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
   });
   const countries = ["all", ...new Set(samples.map(s=>getCountry(s.externalLab)).filter(Boolean))];
 
+  const fileRef = React.useRef(null);
+  const [importing, setImporting] = React.useState(false);
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (typeof XLSX === "undefined") { alert(ar?"مكتبة Excel لم تحمّل بعد، حاول مرة أخرى":"Excel library not loaded yet, try again"); return; }
+    setImporting(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      const pick = (row, keys) => {
+        for (const k of Object.keys(row)) {
+          const kl = k.toLowerCase().trim();
+          if (keys.some(x => kl === x || kl.includes(x))) return String(row[k]).trim();
+        }
+        return "";
+      };
+      const fmtDate = (v) => {
+        if (!v) return new Date().toISOString().slice(0,10);
+        if (typeof v === "number") { const d = XLSX.SSF.parse_date_code(v); if (d) return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`; }
+        const s = String(v).trim();
+        const d = new Date(s);
+        return isNaN(d) ? s : d.toISOString().slice(0,10);
+      };
+      const newSamples = [];
+      const existingCodes = new Set(samples.map(s=>s.sampleCode));
+      rows.forEach(row => {
+        const code = pick(row, ["code","كود"]) || uid();
+        const patient = pick(row, ["patient","name","اسم","مريض"]);
+        const test = pick(row, ["test","تحليل","فحص"]);
+        const country = pick(row, ["country","بلد","lab","معمل"]);
+        const date = fmtDate(pick(row, ["receiving","receive","date","collect","تاريخ"]));
+        const price = parseFloat(pick(row, ["price","سعر","amount"]).replace(/[^0-9.]/g,"")) || 0;
+        if (!patient && !test) return;
+        let id = code; let n = 1;
+        while (existingCodes.has(id) || newSamples.some(x=>x.id===id)) { id = code + "_" + (n++); }
+        existingCodes.add(id);
+        newSamples.push({
+          id, sampleCode: id, patientName: patient, testType: test,
+          externalLab: country, collectDate: date, sentDate: date,
+          status: "received", salePrice: price, labCost: 0, deposit: 0,
+          paymentStatus: "unpaid", gender: "", age: "", notes: "Imported from Excel",
+        });
+      });
+      if (!newSamples.length) { alert(ar?"لم يتم العثور على بيانات صالحة":"No valid rows found"); setImporting(false); return; }
+      setSamples(p => {
+        const next = [...p, ...newSamples];
+        try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
+        return next;
+      });
+      await upsertSamples(newSamples);
+      alert((ar?"تم استيراد ":"Imported ")+newSamples.length+(ar?" عينة":" samples"));
+    } catch(err) {
+      alert((ar?"خطأ في قراءة الملف: ":"Error reading file: ")+err.message);
+    }
+    setImporting(false);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:10}}>
         <h2 style={{color:"#111",fontSize:mob?17:20,margin:0}}>{t.nav.samples} ({samples.length})</h2>
-        <button onClick={onAddNew} style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontSize:14,fontWeight:600,flexShrink:0}}>
-          + {mob?"":t.nav.newSample}
-        </button>
+        <div style={{display:"flex",gap:8,flexShrink:0}}>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelUpload} style={{display:"none"}}/>
+          <button onClick={()=>fileRef.current?.click()} disabled={importing}
+            style={{background:"#f5f5f7",color:"#111",border:"1px solid #e5e5e5",borderRadius:8,padding:"9px 14px",cursor:"pointer",fontSize:13,fontWeight:600}}>
+            {importing ? (ar?"جارٍ الرفع...":"Importing...") : (ar?"📄 رفع Excel":"📄 Upload Excel")}
+          </button>
+          <button onClick={onAddNew} style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontSize:14,fontWeight:600}}>
+            + {mob?"":t.nav.newSample}
+          </button>
+        </div>
       </div>
 
       <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
@@ -1002,7 +1164,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:700}}>
             <thead>
               <tr style={{background:"#fafafa"}}>
-                {[t.table.code,t.table.patient,t.table.test,t.dir==="rtl"?"البلد":"Country","Sent",t.table.days,t.table.status,t.table.price,t.table.payment,""].map((h,i)=>(
+                {[t.table.code,t.table.patient,t.table.test,t.dir==="rtl"?"البلد":"Country",t.dir==="rtl"?"تاريخ الاستلام":"Receiving Date",t.table.days,t.table.status,t.table.price,""].map((h,i)=>(
                   <th key={i} style={{padding:"11px 12px",color:"#111",fontWeight:600,textAlign:"start",fontSize:12,whiteSpace:"nowrap"}}>{h}</th>
                 ))}
               </tr>
@@ -1021,7 +1183,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
                     <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
                       <span style={{background:"#f5f5f7",color:"#555",borderRadius:6,padding:"3px 8px",fontSize:12,fontWeight:500}}>{getCountry(s.externalLab)}</span>
                     </td>
-                    <td style={{padding:"10px 12px",color:"#111",whiteSpace:"nowrap"}}>{s.sentDate}</td>
+                    <td style={{padding:"10px 12px",color:"#111",whiteSpace:"nowrap"}}>{s.collectDate||s.sentDate}</td>
                     <td style={{padding:"10px 12px",textAlign:"center",minWidth:80}}>
                       {(()=>{
                         const tat=getTAT(s.testType);
@@ -1050,14 +1212,8 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
                           try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
                           return next;
                         });
-                        // Save to Supabase
-                        try {
-                          await fetch(`${SUPA_URL}/rest/v1/samples`, {
-                            method:"POST",
-                            headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
-                            body:JSON.stringify([{id:updated.id,data:JSON.stringify({...updated,resultPdf:null})}])
-                          });
-                        } catch {}
+                        // Save to Supabase (queues + retries on failure)
+                        await upsertSample(updated);
                       }}
                         style={{background:SC[s.status]||"#f5f5f7",color:"#fff",border:"none",borderRadius:6,padding:"4px 8px",fontSize:12,fontWeight:600,cursor:"pointer",outline:"none",appearance:"none",WebkitAppearance:"none",paddingInlineEnd:20,backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='white'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"calc(100% - 6px) center"}}>
                         {Object.entries(t.statuses).map(([k,v])=>(
@@ -1066,9 +1222,6 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
                       </select>
                     </td>
                     <td style={{padding:"10px 12px",color:"#059669",whiteSpace:"nowrap"}}>{fmt(s.salePrice)} EGP</td>
-                    <td style={{padding:"10px 12px"}}>
-                      <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"3px 10px",fontSize:12,border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04)"}}>{t.payStatus[s.paymentStatus]}</span>
-                    </td>
                     <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
                       <button onClick={()=>onEdit(s.id)} style={{background:"transparent",color:"#555",border:"1px solid #e5e5e5",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,marginInlineEnd:6}}>{t.table.edit}</button>
                       <button onClick={()=>onDelete(s.id)} style={{background:"transparent",color:"#aaa",border:"1px solid #e5e5e5",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12}}>{t.table.del}</button>
@@ -1172,7 +1325,7 @@ function Accounting({ t, samples, setSamples }) {
                 <div style={{fontSize:12}}><div style={{color:"#111",marginBottom:2}}>Margin</div><div style={{color:margin>=0?"#10b981":"#ef4444",fontWeight:600}}>{fmt(margin)}</div></div>
               </div>
               {s.paymentStatus!=="paid"&&(
-                <button onClick={()=>setSamples(p=>p.map(x=>x.id===s.id?{...x,paymentStatus:"paid",deposit:x.salePrice}:x))}
+                <button onClick={()=>{const u={...s,paymentStatus:"paid",deposit:s.salePrice};setSamples(p=>p.map(x=>x.id===s.id?u:x));upsertSample(u);}}
                   style={{background:"#f5f5f7",color:"#15803d",border:"1px solid #e5e5e5",borderRadius:7,padding:"7px 14px",cursor:"pointer",fontSize:13,width:"100%"}}>
                   {t.accounting.markPaid}
                 </button>
@@ -1208,7 +1361,7 @@ function Accounting({ t, samples, setSamples }) {
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {s.paymentStatus!=="paid"&&(
-                        <button onClick={()=>setSamples(p=>p.map(x=>x.id===s.id?{...x,paymentStatus:"paid",deposit:x.salePrice}:x))}
+                        <button onClick={()=>{const u={...s,paymentStatus:"paid",deposit:s.salePrice};setSamples(p=>p.map(x=>x.id===s.id?u:x));upsertSample(u);}}
                           style={{background:"#f5f5f7",color:"#15803d",border:"1px solid #e5e5e5",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12}}>✓</button>
                       )}
                     </td>
@@ -1770,7 +1923,7 @@ function ResultsPage({ t, samples, setSamples }) {
     const [editPdfName, setEditPdfName] = React.useState(s.resultPdfName||"");
 
     const saveEdit = () => {
-      setSamples(p=>p.map(x=>x.id===s.id?{...x,resultNote:editNote,resultPdf:editPdf,resultPdfName:editPdfName}:x));
+      { const u={...s,resultNote:editNote,resultPdf:editPdf,resultPdfName:editPdfName}; setSamples(p=>p.map(x=>x.id===s.id?u:x)); upsertSample(u); }
       setEditing(false);
     };
     const handleEditFile = (e) => {
@@ -1984,7 +2137,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
     });
 
   const updateSampleShipment = (id, newNum) => {
-    setSamples(p => p.map(s => s.id===id ? {...s, shipmentNumber: newNum.trim()} : s));
+    { const cur=samples.find(s=>s.id===id); if(cur){const u={...cur,shipmentNumber:newNum.trim()}; setSamples(p=>p.map(s=>s.id===id?u:s)); upsertSample(u);} }
     setEditingShipment(null);
     setNewShipNum("");
   };
@@ -2011,19 +2164,12 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
       return next;
     });
 
-    // Save to Supabase outside setSamples (safe async)
-    for (const sid of selectedPatients) {
-      const sample = samples.find(s => s.id === sid);
-      if (!sample) continue;
-      const updated = {...sample, shipmentNumber: shipId, sentDate: shipDate||sample.sentDate, status: "sent"};
-      try {
-        await fetch(`${SUPA_URL}/rest/v1/samples`, {
-          method: "POST",
-          headers: {...SUPA_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"},
-          body: JSON.stringify([{id: updated.id, data: JSON.stringify({...updated, resultPdf: null})}])
-        });
-      } catch(e) { console.warn("Supabase save failed:", e); }
-    }
+    // Save to Supabase outside setSamples (reliable batch + retry)
+    const changed = selectedPatients
+      .map(sid => samples.find(s => s.id === sid))
+      .filter(Boolean)
+      .map(sample => ({...sample, shipmentNumber: shipId, sentDate: shipDate||sample.sentDate, status: "sent"}));
+    await upsertSamples(changed);
 
     setShowNewModal(false);
     setNewShipId("");
@@ -2046,53 +2192,42 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
     setPatientSearch("");
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editShipId.trim()) return;
+    const newNum = editShipId.trim();
+    const changed = [];
     setSamples(p => {
       const next = p.map(s => {
         const wasInShipment = s.shipmentNumber === editModal;
         const isSelected = selectedPatients.includes(s.id);
-        if (wasInShipment && !isSelected) return {...s, shipmentNumber:""};
-        if (!wasInShipment && isSelected) return {...s, shipmentNumber:editShipId.trim()};
-        if (wasInShipment && isSelected) return {...s, shipmentNumber:editShipId.trim()};
-        return s;
+        let ns = s;
+        if (wasInShipment && !isSelected) ns = {...s, shipmentNumber:""};
+        else if (isSelected) ns = {...s, shipmentNumber:newNum};
+        if (ns !== s) changed.push(ns);
+        return ns;
       });
       try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
-      // Save changed samples to Supabase
-      next.filter(s => s.shipmentNumber===editShipId.trim() || selectedPatients.includes(s.id)).forEach(async s => {
-        try {
-          await fetch(`${SUPA_URL}/rest/v1/samples`, {
-            method:"POST",
-            headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
-            body:JSON.stringify([{id:s.id,data:JSON.stringify({...s,resultPdf:null})}])
-          });
-        } catch {}
-      });
       return next;
     });
+    await upsertSamples(changed);
     setEditModal(null);
     setSelectedPatients([]);
     setPatientSearch("");
-    setSelected(editShipId.trim());
+    setSelected(newNum);
   };
 
-  const deleteShipment = (shipNum) => {
+  const deleteShipment = async (shipNum) => {
     if (!window.confirm(ar?`هل تريد حذف الشحنة ${shipNum}؟`:`Delete shipment ${shipNum}?`)) return;
+    const changed = [];
     setSamples(p => {
-      const next = p.map(s => s.shipmentNumber===shipNum ? {...s, shipmentNumber:""} : s);
-      try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
-      // Update affected samples in Supabase
-      next.filter(s => !s.shipmentNumber && p.find(x=>x.id===s.id)?.shipmentNumber===shipNum).forEach(async s => {
-        try {
-          await fetch(`${SUPA_URL}/rest/v1/samples`, {
-            method:"POST",
-            headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
-            body:JSON.stringify([{id:s.id,data:JSON.stringify({...s,resultPdf:null})}])
-          });
-        } catch {}
+      const next = p.map(s => {
+        if (s.shipmentNumber===shipNum) { const ns = {...s, shipmentNumber:""}; changed.push(ns); return ns; }
+        return s;
       });
+      try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
       return next;
     });
+    await upsertSamples(changed);
     if (selected===shipNum) setSelected(null);
     setEditModal(null);
   };
@@ -2175,13 +2310,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                       try{localStorage.setItem("harmony_samples",JSON.stringify(next));}catch{}
                       return next;
                     });
-                    try{
-                      await fetch(`${SUPA_URL}/rest/v1/samples`,{
-                        method:"POST",
-                        headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
-                        body:JSON.stringify([{id:updated.id,data:JSON.stringify({...updated,resultPdf:null})}])
-                      });
-                    }catch{}
+                    await upsertSample(updated);
                   }}
                     style={{background:SC[s.status]||"#f5f5f7",color:"#fff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:600,cursor:"pointer",outline:"none",appearance:"none",WebkitAppearance:"none",paddingInlineEnd:18,backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='white'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"calc(100% - 5px) center"}}>
                     {Object.entries(t.statuses).map(([k,v])=>(
@@ -2258,13 +2387,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                           try{localStorage.setItem("harmony_samples",JSON.stringify(next));}catch{}
                           return next;
                         });
-                        try{
-                          await fetch(`${SUPA_URL}/rest/v1/samples`,{
-                            method:"POST",
-                            headers:{...SUPA_HEADERS,"Prefer":"resolution=merge-duplicates,return=minimal"},
-                            body:JSON.stringify([{id:updated.id,data:JSON.stringify({...updated,resultPdf:null})}])
-                          });
-                        }catch{}
+                        await upsertSample(updated);
                       }}
                         onClick={e=>e.stopPropagation()}
                         style={{background:SC[s.status]||"#f5f5f7",color:"#fff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:600,cursor:"pointer",outline:"none",appearance:"none",WebkitAppearance:"none",paddingInlineEnd:18,backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='white'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"calc(100% - 5px) center"}}>
@@ -2640,6 +2763,28 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
     setEditClient(null); setEditItems(null);
   };
 
+  const exportInvoiceExcel = (name, items) => {
+    if (typeof XLSX === "undefined") { alert(ar?"مكتبة Excel لم تحمّل بعد":"Excel library not loaded yet"); return; }
+    const revenue = items.reduce((a,s)=>a+Number(s.salePrice||0),0);
+    const rows = items.map((s,i)=>({
+      "#": i+1,
+      [ar?"الكود":"Code"]: s.sampleCode || s.id,
+      [ar?"المريض":"Patient"]: s.patientName || "",
+      [ar?"الفحص":"Test"]: s.testType || "",
+      [ar?"التاريخ":"Date"]: s.collectDate || s.sentDate || "",
+      [ar?"السعر":"Price (EGP)"]: Number(s.salePrice||0),
+      [ar?"الدفع":"Payment"]: (t.payStatus && t.payStatus[s.paymentStatus]) || s.paymentStatus || "",
+    }));
+    rows.push({});
+    rows.push({ [ar?"المريض":"Patient"]: ar?"الإجمالي":"TOTAL", [ar?"السعر":"Price (EGP)"]: revenue });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{wch:4},{wch:16},{wch:24},{wch:26},{wch:13},{wch:13},{wch:12}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Invoice");
+    const safeName = String(name).replace(/[^a-zA-Z0-9\u0600-\u06FF _-]/g,"").slice(0,40) || "invoice";
+    XLSX.writeFile(wb, `Invoice_${safeName}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
   const printInvoice = (name, items) => {
     const win = window.open("","_blank");
     const revenue = items.reduce((a,s)=>a+Number(s.salePrice||0),0);
@@ -2820,7 +2965,8 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
                 </> : (
                   <button onClick={()=>openEdit(name)} style={{background:"#f5f5f7",color:"#111",border:"1px solid #e5e5e5",borderRadius:7,padding:"6px 14px",cursor:"pointer",fontSize:12,fontWeight:600}}>✏ {ar?"تعديل":"Edit"}</button>
                 )}
-                <button onClick={()=>printInvoice(name,activeItems)} style={{background:"#111",color:"#fff",border:"none",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:600}}>🖨 {ar?"طباعة":"Print"}</button>
+                <button onClick={()=>printInvoice(name,activeItems)} style={{background:"#111",color:"#fff",border:"none",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:600}}>🖨 {ar?"طباعة PDF":"Print / PDF"}</button>
+                <button onClick={()=>exportInvoiceExcel(name,activeItems)} style={{background:"#f5f5f7",color:"#15803d",border:"1px solid #e5e5e5",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:600}}>📊 Excel</button>
               </div>
             </div>
 
@@ -4463,6 +4609,8 @@ function App() {
   const loadSamplesFromSupabase = async (silent=false) => {
     try {
       if (!silent) setSyncStatus("syncing");
+      // First push any locally-queued changes so the server is up to date
+      await flushPending();
       const r = await fetch(`${SUPA_URL}/rest/v1/samples?select=id,data`, { headers: SUPA_HEADERS });
       if (!r.ok) { if (!silent) setSyncStatus("ok"); return; }
       const data = await r.json();
@@ -4480,8 +4628,13 @@ function App() {
           }
         } catch {}
       });
+      // Overlay any still-pending local edits on top of server data
+      const pending = _getPending();
+      Object.keys(pending).forEach(pid => {
+        const p = pending[pid];
+        if (p && p.patientName) seen.set(p.sampleCode || p.id, { ...p, id: pid });
+      });
       const parsed = [...seen.values()];
-      // Only update state if data changed
       // Auto-mark overdue: samples with status "sent" for more than 5 days
       const today = new Date();
       const withOverdue = parsed.map(s => {
@@ -4493,11 +4646,10 @@ function App() {
       });
 
       setSamplesState(prev => {
-        // Compare full content to detect status changes
-        const prevHash = prev.map(s=>s.id+":"+s.status+":"+(s.shipmentNumber||"")).sort().join("|");
-        const newHash = withOverdue.map(s=>s.id+":"+s.status+":"+(s.shipmentNumber||"")).sort().join("|");
-        if (prevHash === newHash && prev.length === withOverdue.length) return prev;
-        try { localStorage.setItem("harmony_samples", JSON.stringify(withOverdue)); } catch {}
+        // Compare full content (all fields) to detect any change
+        const hashOf = arr => arr.map(s=>JSON.stringify({id:s.id,st:s.status,sh:s.shipmentNumber,pr:s.salePrice,tt:s.testType,pn:s.patientName,pay:s.paymentStatus})).sort().join("|");
+        if (hashOf(prev) === hashOf(withOverdue) && prev.length === withOverdue.length) return prev;
+        try { localStorage.setItem("harmony_samples", JSON.stringify(withOverdue.map(s=>({...s,resultPdf:s.resultPdf&&s.resultPdf.length>500000?null:s.resultPdf})))); } catch {}
         return withOverdue;
       });
       if (!silent) setSyncStatus("ok");
@@ -4506,9 +4658,11 @@ function App() {
 
   useEffect(() => {
     loadSamplesFromSupabase();
-    // Poll every 30 seconds for changes from other devices
+    // Poll for changes from other devices
     const interval = setInterval(() => loadSamplesFromSupabase(true), 15000);
-    return () => clearInterval(interval);
+    // Retry any queued (failed) saves more frequently
+    const flusher = setInterval(() => flushPending(), 8000);
+    return () => { clearInterval(interval); clearInterval(flusher); };
   }, []);
 
   // Track previous sample IDs to detect deletions
@@ -4559,35 +4713,25 @@ function App() {
   ];
 
   const saveToSupabase = async (data) => {
-    try {
-      const cleanData = {...data, resultPdf: data.resultPdf && data.resultPdf.length > 500000 ? null : data.resultPdf};
-      const r = await fetch(`${SUPA_URL}/rest/v1/samples`, {
-        method: "POST",
-        headers: { ...SUPA_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify([{ id: data.id, data: JSON.stringify(cleanData) }])
-      });
-      if (r.ok) { setSyncStatus("ok"); return true; }
-      setSyncStatus("error");
-      return false;
-    } catch(e) {
-      // Network issue - save to localStorage only, will sync later
-      setSyncStatus("ok");
-      return false;
-    }
+    const ok = await upsertSample(data);
+    setSyncStatus(ok ? "ok" : "syncing");
+    return ok;
   };
 
   const handleSave = async (data) => {
     // 1. Update state + localStorage immediately
     setSamples(p => {
-      const updated = editTarget ? p.map(s=>s.id===editTarget?data:s) : [...p,data];
+      const exists = p.some(s => s.id === data.id);
+      const updated = exists ? p.map(s => s.id === data.id ? data : s) : [...p, data];
       try { localStorage.setItem("harmony_samples", JSON.stringify(updated)); } catch {}
       return updated;
     });
     setEditTarget(null);
     setTab("samples");
-    // 2. Save to Supabase with retry (in background)
+    // 2. Save to Supabase (queues + retries on failure)
     setSyncStatus("syncing");
-    saveToSupabase(data);
+    const ok = await upsertSample(data);
+    setSyncStatus(ok ? "ok" : "syncing");
   };
   const handleEdit = (id) => { setEditTarget(id); setTab("form"); setMobileMenuOpen(false); };
   const handleClearData = async () => {
@@ -4613,29 +4757,14 @@ function App() {
 
   const handleDelete = async (id) => {
     if(window.confirm(t.confirm)) {
-      // Update state and localStorage immediately
       setSamples(p => {
         const updated = p.filter(s=>s.id!==id);
-        // Save to localStorage right away
         try { localStorage.setItem("harmony_samples", JSON.stringify(updated)); } catch {}
         return updated;
       });
-      // Delete from Supabase immediately
-      try {
-        // Use body-based delete to avoid URL encoding issues with special chars in ID
-        const r = await fetch(`${SUPA_URL}/rest/v1/samples?id=eq.${id}`, {
-          method: "DELETE",
-          headers: { ...SUPA_HEADERS, "Content-Type": "application/json" },
-        });
-        if (!r.ok) {
-          const errText = await r.text();
-          console.error("Delete failed:", errText);
-          // Fallback: try with encoded ID
-          await fetch(`${SUPA_URL}/rest/v1/samples?id=eq.${encodeURIComponent(id)}`, {
-            method: "DELETE", headers: SUPA_HEADERS,
-          });
-        }
-      } catch(e) { console.error("Delete error:", e); }
+      setSyncStatus("syncing");
+      const ok = await deleteSample(id);
+      setSyncStatus(ok ? "ok" : "error");
     }
   };
   const goTab = (key) => { setTab(key); if(key==="form") setEditTarget(null); setMobileMenuOpen(false); };
@@ -4705,6 +4834,17 @@ function App() {
           {overdue.length>0 && (
             <div style={{background:"#ef4444",color:"#fff",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,letterSpacing:"0.2px"}}>⚠ {overdue.length}</div>
           )}
+          {syncStatus==="syncing" && <span title="Syncing" style={{fontSize:12,color:"#f59e0b"}}>⟳</span>}
+          {syncStatus==="ok" && <span title="Synced" style={{fontSize:12,color:"#10b981"}}>✓</span>}
+          <button onClick={()=>loadSamplesFromSupabase()} title={lang==="ar"?"تحديث":"Refresh"} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#aaa",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>↺</button>
+          {isAdmin && <button onClick={async()=>{
+            if(!window.confirm(lang==="ar"?"رفع كل العينات إلى السحابة؟":"Sync all samples to cloud?")) return;
+            setSyncStatus("syncing");
+            const ok = await upsertSamples(samples);
+            await flushPending();
+            setSyncStatus("ok");
+            alert((lang==="ar"?"تم رفع ":"Synced ")+ok+"/"+samples.length);
+          }} title="Sync all to cloud" style={{background:"#111",color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>☁</button>}
           <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")} style={{background:"#f5f5f7",border:"1px solid #e5e5e5",color:"#555",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:500}}>
             🌐 {t.lang}
           </button>
@@ -4712,10 +4852,9 @@ function App() {
             <span style={{fontSize:12,color:isAdmin?"#fff":"#9ca3af"}}>{isAdmin?"●":"○"}</span>
             <span style={{fontSize:13,fontWeight:600,color:isAdmin?"#fff":"#111"}}>{currentUser?.username}</span>
           </div>
-
-<button onClick={handleClearData} title={lang==="ar"?"مسح كل البيانات":"Clear all data"} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#aaa",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>
+          {isAdmin && <button onClick={handleClearData} title={lang==="ar"?"مسح كل البيانات":"Clear all data"} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#aaa",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>
             🗑
-          </button>
+          </button>}
         </div>
       </div>
 
