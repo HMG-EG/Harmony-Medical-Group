@@ -12,12 +12,50 @@
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
+    /* ── Harmony design tokens ───────────────────────────────────── */
+    :root {
+      --hmg-ink:#10201E; --hmg-ink2:#5B6B67; --hmg-muted:#8A9793;
+      --hmg-canvas:#F4F7F5; --hmg-surface:#FFFFFF;
+      --hmg-primary:#0F6E56; --hmg-primary-dark:#0B5442; --hmg-tint:#E1F5EE;
+      --hmg-line:#E4ECE9;
+      --hmg-sans:'IBM Plex Sans','IBM Plex Sans Arabic','Cairo',system-ui,sans-serif;
+      --hmg-mono:'IBM Plex Mono',ui-monospace,'Cascadia Code',monospace;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f5f5f7; font-family: system-ui, sans-serif; }
-    #loading { display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;color:#555; }
-    .spinner { width:40px;height:40px;border:3px solid #e5e5e5;border-top-color:#111;border-radius:50%;animation:spin 0.8s linear infinite; }
+    body { background: var(--hmg-canvas); font-family: var(--hmg-sans); color: var(--hmg-ink); -webkit-font-smoothing:antialiased; }
+    #loading { display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;color:#5B6B67; }
+    .spinner { width:40px;height:40px;border:3px solid #E4ECE9;border-top-color:#0F6E56;border-radius:50%;animation:spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* Tabular monospace for figures — the instrument-readout signature */
+    .hmg-num { font-family: var(--hmg-mono); font-variant-numeric: tabular-nums; letter-spacing:-0.2px; }
+
+    /* ── Smoothness layer ────────────────────────────────────────── */
+    button, a, input, select, textarea {
+      transition: background-color .18s ease, color .18s ease, border-color .18s ease,
+                  box-shadow .18s ease, transform .12s ease, opacity .18s ease;
+    }
+    button:not(:disabled) { cursor: pointer; }
+    button:not(:disabled):hover { filter: brightness(0.97); }
+    button:not(:disabled):active { transform: scale(0.98); }
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+      outline: none; box-shadow: 0 0 0 3px rgba(15,110,86,0.18); border-color: var(--hmg-primary) !important;
+    }
+    ::selection { background: rgba(15,110,86,0.16); }
+    /* Softer, calmer scrollbars */
+    * { scrollbar-width: thin; scrollbar-color: #C7D4CF transparent; }
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-thumb { background: #C7D4CF; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+    *::-webkit-scrollbar-thumb:hover { background: #A9BBB4; background-clip: content-box; }
+    /* Gentle page/tab transition */
+    @keyframes hmgFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .hmg-fade { animation: hmgFade .28s cubic-bezier(.4,0,.2,1); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
   </style>
 </head>
 <body>
@@ -227,7 +265,7 @@ const T = {
     tagline:"نظام إدارة العينات والمحاسبة",
     nav:{ dashboard:"الرئيسية", newSample:"إضافة عينة", samples:"العينات", accounting:"المحاسبة", reports:"التقارير", clients:"العملاء", results:"النتائج", addTest:"إضافة فحص جديد", shipments:"الشحنات", settings:"الإعدادات", invoice:"الفواتير", tests:"الفحوصات", clientsBook:"العملاء" },
     dash:{ total:"إجمالي العينات", pending:"قيد الإرسال", abroad:"في الخارج", overdue:"متأخرة TAT", done:"نتائج وصلت", revenue:"الإيرادات" },
-    statuses:{ received:"مستلمة", sent:"أُرسلت للخارج", abroad:"في الخارج", overdue:"متأخرة ⚠", done:"نتيجة وصلت", resample:"إعادة عينة 🔄" },
+    statuses:{ received:"مستلمة", sent:"أُرسلت للخارج", abroad:"في الخارج", overdue:"متأخرة", done:"نتيجة وصلت", resample:"إعادة عينة" },
     payStatus:{ paid:"مدفوع", unpaid:"غير مدفوع", partial:"مدفوع جزئياً" },
     form:{
       heading:"بيانات المريض والعينة",
@@ -255,7 +293,7 @@ const T = {
     table:{ code:"الكود", patient:"المريض", test:"الفحص", days:"يوم", status:"الحالة", price:"السعر", payment:"الدفع", edit:"تعديل", del:"حذف", noData:"لا توجد عينات — أضف عينة جديدة" },
     accounting:{ title:"المحاسبة", revenue:"إجمالي الإيرادات", cost:"إجمالي التكاليف", profit:"صافي الربح", collected:"محصّل فعلاً", remaining:"متبقي للتحصيل", markPaid:"✓ تحديد كمدفوع" },
     reports:{ title:"التقارير", byStatus:"توزيع الحالات", byLab:"توزيع المعامل", overdue:"قائمة المتأخرات", noOverdue:"✓ لا توجد عينات متأخرة" },
-    alert:{ title:"⚠ عينات تجاوزت موعد TAT", msg:"العينات التالية تجاوزت الوقت المحدد للفحص:", close:"إغلاق" },
+    alert:{ title:"عينات تجاوزت موعد TAT", msg:"العينات التالية تجاوزت الوقت المحدد للفحص:", close:"إغلاق" },
     confirm:"هل أنت متأكد من الحذف؟",
     labs:["Genoks — Turkey","Lifenity - UAE","Medenome - India","Genotypos - Greece","Genomic — USA","EONE Diagnomics — Korea","Almokhtabar — Egypt","Other"],
     tests:["Acetone Serum (Beta hydroxybutyrate)", "Anti Musk (Muscle Specific Kinase)", "Beta Hydroxy Butyrate", "Bile Acid", "CA 27.29", "CA 72-4 (Gastric Cancer Marker)", "CH50", "Dengue IGM / IGG", "Everolimus", "Filaria Antibody detection", "HE4", "Homocysteine in Urine", "Hydroxylase Auto Antibodies", "Inhibin A", "Nicotine", "OXIDACTIVE STRESS TEST", "Parvovirus B19 IgM antibody", "T3 Reverse", "Tau protein, phosphorylated in CSF (pTau)", "Vitamin A", "Vitamin B1", "Vitamin B2 (Riboflavin)", "Vitamin B3", "Vitamin B5", "Vitamin B6", "Vitamin D", "Vitamin E", "Vitamin H / B7", "Vitamin K", "Vitamin K2", "Zn T8 Antibodies Zinc Transport 8 Auto Antibodies", "Other"],
@@ -267,7 +305,7 @@ const T = {
     tagline:"Sample Tracking & Accounting",
     nav:{ dashboard:"Home", newSample:"Add Sample", samples:"Samples", accounting:"Accounting", reports:"Reports", clients:"Clients", results:"Results", addTest:"Add New Test", shipments:"Shipments", settings:"Settings", invoice:"Invoices", tests:"Tests", clientsBook:"Clients" },
     dash:{ total:"Total Samples", pending:"Pending", abroad:"Abroad", overdue:"TAT Overdue", done:"Results In", revenue:"Revenue" },
-    statuses:{ received:"Received", sent:"Sent Abroad", abroad:"Abroad", overdue:"Overdue ⚠", done:"Results In", resample:"Resample 🔄" },
+    statuses:{ received:"Received", sent:"Sent Abroad", abroad:"Abroad", overdue:"Overdue", done:"Results In", resample:"Resample" },
     payStatus:{ paid:"Paid", unpaid:"Unpaid", partial:"Partial" },
     form:{
       heading:"Patient & Sample Entry",
@@ -295,7 +333,7 @@ const T = {
     table:{ code:"Code", patient:"Patient", test:"Test", days:"days", status:"Status", price:"Price", payment:"Payment", edit:"Edit", del:"Delete", noData:"No samples yet — add your first" },
     accounting:{ title:"Accounting", revenue:"Total Revenue", cost:"Total Cost", profit:"Net Profit", collected:"Collected", remaining:"Remaining", markPaid:"✓ Mark Paid" },
     reports:{ title:"Reports", byStatus:"Status Distribution", byLab:"Lab Distribution", overdue:"Overdue List", noOverdue:"✓ No overdue samples" },
-    alert:{ title:"⚠ Samples Exceeded TAT", msg:"The following samples have exceeded their TAT:", close:"Dismiss" },
+    alert:{ title:"Samples Exceeded TAT", msg:"The following samples have exceeded their TAT:", close:"Dismiss" },
     confirm:"Are you sure you want to delete?",
     labs:["Genoks — Turkey","Lifenity - UAE","Medenome - India","Genotypos - Greece","Genomic — USA","EONE Diagnomics — Korea","Almokhtabar — Egypt","Other"],
     tests:["Acetone Serum (Beta hydroxybutyrate)", "Anti Musk (Muscle Specific Kinase)", "Beta Hydroxy Butyrate", "Bile Acid", "CA 27.29", "CA 72-4 (Gastric Cancer Marker)", "CH50", "Dengue IGM / IGG", "Everolimus", "Filaria Antibody detection", "HE4", "Homocysteine in Urine", "Hydroxylase Auto Antibodies", "Inhibin A", "Nicotine", "OXIDACTIVE STRESS TEST", "Parvovirus B19 IgM antibody", "T3 Reverse", "Tau protein, phosphorylated in CSF (pTau)", "Vitamin A", "Vitamin B1", "Vitamin B2 (Riboflavin)", "Vitamin B3", "Vitamin B5", "Vitamin B6", "Vitamin D", "Vitamin E", "Vitamin H / B7", "Vitamin K", "Vitamin K2", "Zn T8 Antibodies Zinc Transport 8 Auto Antibodies", "Other"],
@@ -306,9 +344,93 @@ const T = {
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const daysSince = d => d ? Math.floor((Date.now()-new Date(d))/86400000) : 0;
 const fmt = n => Number(n||0).toLocaleString();
-const SC = { received:"#6366f1",sent:"#3b82f6",abroad:"#f59e0b",overdue:"#ef4444",done:"#10b981",resample:"#f97316" };
-const PC = { paid:"#10b981", unpaid:"#ef4444", partial:"#f59e0b" };
+const SC = { received:"#4F63D2",sent:"#2563EB",abroad:"#B26B00",overdue:"#C7362F",done:"#0F8A5F",resample:"#D2691E" };
+const PC = { paid:"#0F8A5F", unpaid:"#C7362F", partial:"#B26B00" };
+// Design tokens for JS-side inline styles (mirror of :root CSS vars)
+const TOK = {
+  ink:"#10201E", ink2:"#5B6B67", muted:"#8A9793",
+  canvas:"#F4F7F5", surface:"#FFFFFF",
+  primary:"#0F6E56", primaryDark:"#0B5442", tint:"#E1F5EE",
+  line:"#E4ECE9",
+  sans:"'IBM Plex Sans','IBM Plex Sans Arabic','Cairo',system-ui,sans-serif",
+  mono:"'IBM Plex Mono',ui-monospace,monospace",
+};
+// Tabular-mono style for any figure (counts, prices, dates, codes)
+const NUM = { fontFamily:TOK.mono, fontVariantNumeric:"tabular-nums", letterSpacing:"-0.2px" };
 const uid = () => Date.now().toString(36).toUpperCase().slice(-6);
+
+// ─── Icon system — clean line icons (Feather/Lucide style) ────────────────────
+const ICON_PATHS = {
+  dashboard:`<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>`,
+  plus:`<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>`,
+  sample:`<path d="M9 2h6"/><path d="M9 2v7.5L5 17.2A2.5 2.5 0 0 0 7.2 21h9.6a2.5 2.5 0 0 0 2.2-3.8L15 9.5V2"/><line x1="7.5" y1="13.5" x2="16.5" y2="13.5"/>`,
+  check:`<polyline points="20 6 9 17 4 12"/>`,
+  checkCircle:`<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>`,
+  users:`<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
+  truck:`<rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>`,
+  dollar:`<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
+  microscope:`<path d="M6 18h8"/><path d="M3 22h18"/><path d="M14 22a7 7 0 1 0 0-14h-1"/><path d="M9 14h2"/><path d="M9 12a2 2 0 0 1-2-2V6h4v4a2 2 0 0 1-2 2z"/><path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/>`,
+  receipt:`<path d="M4 2v20l2-1.5L8 22l2-1.5L12 22l2-1.5L16 22l2-1.5L20 22V2l-2 1.5L16 2l-2 1.5L12 2l-2 1.5L8 2 6 3.5 4 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="14" y2="12"/>`,
+  settings:`<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>`,
+  search:`<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>`,
+  calendar:`<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`,
+  globe:`<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>`,
+  printer:`<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>`,
+  sheet:`<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>`,
+  upload:`<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>`,
+  refresh:`<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>`,
+  cloud:`<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>`,
+  trash:`<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>`,
+  edit:`<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>`,
+  paperclip:`<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>`,
+  fileText:`<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>`,
+  clock:`<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`,
+  alert:`<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
+  eye:`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`,
+  eyeOff:`<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`,
+  x:`<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`,
+  bell:`<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>`,
+  download:`<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>`,
+  file:`<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>`,
+  mail:`<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/>`,
+  send:`<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>`,
+  phone:`<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>`,
+  whatsapp:`<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>`,
+  mapPin:`<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>`,
+  chevronUp:`<polyline points="18 15 12 9 6 15"/>`,
+  chevronDown:`<polyline points="6 9 12 15 18 9"/>`,
+};
+const Icon = ({name, size=16, stroke=2, color="currentColor", style}) => (
+  React.createElement("svg", {
+    width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:color,
+    strokeWidth:stroke, strokeLinecap:"round", strokeLinejoin:"round",
+    style:{flexShrink:0, verticalAlign:"middle", ...style},
+    dangerouslySetInnerHTML:{__html: ICON_PATHS[name] || ""},
+  })
+);
+
+// ─── Email (mailto) helpers ───────────────────────────────────────────────────
+// The app is a static site with no mail server, so emails are composed in the
+// user's own mail app via a mailto: link, pre-filled with subject, body, and the
+// lab signature configured in Settings › Email.
+const getEmailSettings = () => { try { return JSON.parse(localStorage.getItem("harmony_email_settings")||"{}"); } catch { return {}; } };
+const emailSignature = (s) => {
+  s = s || getEmailSettings();
+  const lines = [];
+  if (s.senderName) lines.push(s.senderName);
+  if (s.email)      lines.push(s.email);
+  if (s.phone)      lines.push("Tel: " + s.phone);
+  if (s.whatsapp)   lines.push("WhatsApp: " + s.whatsapp);
+  if (s.address)    lines.push(s.address);
+  return lines.length ? "\n\n—\n" + lines.join("\n") : "";
+};
+const composeEmail = ({ to="", subject="", body="", includeSignature=true } = {}) => {
+  const parts = [];
+  if (subject) parts.push("subject=" + encodeURIComponent(subject));
+  const full = (body || "") + (includeSignature ? emailSignature() : "");
+  if (full) parts.push("body=" + encodeURIComponent(full));
+  window.location.href = "mailto:" + (to || "") + (parts.length ? "?" + parts.join("&") : "");
+};
 
 
 
@@ -403,7 +525,7 @@ function Field({ label, error, hint, children }) {
       <label style={{display:"block",fontSize:13,fontWeight:600,color:"#111",marginBottom:5}}>{label}</label>
       {children}
       {hint && !error && <div style={{fontSize:11,color:"#111",marginTop:3}}>{hint}</div>}
-      {error && <div style={{fontSize:11,color:"#f87171",marginTop:3}}>⚠ {error}</div>}
+      {error && <div style={{fontSize:11,color:"#f87171",marginTop:3}}><Icon name="alert" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{error}</div>}
     </div>
   );
 }
@@ -442,7 +564,7 @@ function CustomSelect({ value, onChange, options, placeholder, error, style }) {
         style={{
           width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center",
           padding:"11px 14px", background:"#fafafa",
-          border:`1.5px solid ${error?"#ef4444":open?"#111":"#e5e5e5"}`,
+          border:`1.5px solid ${error?"#ef4444":open?TOK.primary:"#e5e5e5"}`,
           borderRadius: open?"8px 8px 0 0":8, cursor:"pointer", fontSize:14,
           color: value?"#111":"#aaa", textAlign:"start",
           transition:"border-color .15s", boxSizing:"border-box",
@@ -472,7 +594,7 @@ function CustomSelect({ value, onChange, options, placeholder, error, style }) {
                   padding:"9px 12px", borderRadius:7, cursor:"pointer",
                   fontSize:13, fontWeight:isSel?600:400,
                   color:isSel?"#fff":"#333",
-                  background:isSel?"#111":"transparent",
+                  background:isSel?TOK.primary:"transparent",
                   boxShadow:isSel?"0 2px 8px rgba(0,0,0,0.15)":"none",
                   transition:"all .12s",
                 }}
@@ -538,7 +660,7 @@ function SearchableSelect({ value, onChange, options, placeholder, error, allowC
         autoComplete="off"
         style={{
           width:"100%", background:"#fafafa",
-          border:`1.5px solid ${error?"#ef4444":open?"#111":"#e5e5e5"}`,
+          border:`1.5px solid ${error?"#ef4444":open?TOK.primary:"#e5e5e5"}`,
           borderRadius:8, padding:"10px 14px", color:"#111", fontSize:14,
           outline:"none", transition:"border .15s"
         }}
@@ -569,7 +691,7 @@ function SearchableSelect({ value, onChange, options, placeholder, error, allowC
           })}
           {allowCustom && query.trim() && !filtered.map(o=>typeof o==="object"?o.label:o).includes(query.trim()) && (
             <div onMouseDown={() => select(query.trim())}
-              style={{padding:"10px 14px",cursor:"pointer",fontSize:13,color:"#6366f1",
+              style={{padding:"10px 14px",cursor:"pointer",fontSize:13,color:"#0F6E56",
                 background:highlighted===filtered.length?"#f5f5f7":"#fff",
                 borderTop:"1px solid #f0f0f0", fontWeight:500}}>
               + {dir==="rtl"?`إضافة "${query.trim()}" كعميل جديد`:`Add "${query.trim()}" as new client`}
@@ -730,7 +852,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
         </div>
       )}
 
-      <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:16,padding:mob?20:32,boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
+      <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:16,padding:mob?20:32,boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
 
         {/* ── PATIENT ── */}
         <SecLabel title={t.form.sec1}/>
@@ -748,7 +870,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
               {[["male",t.form.genderM],["female",t.form.genderF]].map(([v,l],i)=>(
                 <button key={v} onClick={()=>set("gender",v)} style={{
                   padding:"9px 22px",cursor:"pointer",fontSize:13,fontWeight:500,
-                  background:f.gender===v?"#111":"#fff",
+                  background:f.gender===v?TOK.primary:"#fff",
                   color:f.gender===v?"#fff":"#555",
                   border:"none",
                   borderInlineStart:i>0?"1.5px solid #e5e5e5":"none",
@@ -793,7 +915,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
           </Field>
 
           <Field label={t.form.sampleCode+" *"} error={errors.sampleCode} hint={!editTarget?t.dir==="rtl"?"يُنشأ تلقائياً — قابل للتعديل":"Auto-generated — editable":null}>
-            <input value={f.sampleCode} onChange={e=>set("sampleCode",e.target.value)} placeholder={t.form.sampleCodePh} style={{...inp(errors.sampleCode),fontFamily:"monospace",letterSpacing:"0.5px"}}/>
+            <input value={f.sampleCode} onChange={e=>set("sampleCode",e.target.value)} placeholder={t.form.sampleCodePh} style={{...inp(errors.sampleCode),fontFamily:TOK.mono,letterSpacing:"0.5px"}}/>
           </Field>
           <div style={{gridColumn:"1/-1"}}>
             <Field label={t.form.testType+" *"} error={errors.testType}>
@@ -851,7 +973,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
                   <div>
                     <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:4}}>{t.form.sampleCode}</label>
                     <input value={et.sampleCode||""} onChange={e=>set("extraTests",(f.extraTests||[]).map((x,i)=>i===idx?{...x,sampleCode:e.target.value}:x))}
-                      placeholder={t.form.sampleCodePh} style={{...inp(),fontFamily:"monospace"}}/>
+                      placeholder={t.form.sampleCodePh} style={{...inp(),fontFamily:TOK.mono}}/>
                   </div>
                   <div>
                     <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:4}}>{t.form.testType}</label>
@@ -933,7 +1055,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
                   {Object.entries(t.payStatus).map(([k,v],i)=>(
                     <button key={k} onClick={()=>set("paymentStatus",k)} style={{
                       flex:1,padding:"10px 8px",cursor:"pointer",fontSize:13,fontWeight:500,
-                      background:f.paymentStatus===k?"#111":"#fff",
+                      background:f.paymentStatus===k?TOK.primary:"#fff",
                       color:f.paymentStatus===k?"#fff":"#555",
                       border:"none",
                       borderInlineStart:i>0?"1.5px solid #e5e5e5":"none",
@@ -946,7 +1068,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
             {!!(f.salePrice||f.labCost) && (
               <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"1fr 1fr 1fr",gap:10,marginTop:16}}>
                 {[[t.form.margin,fmt(margin)+" EGP",margin>=0?"#111":"#ef4444"],[t.form.remaining,fmt(remaining)+" EGP","#111"],["Profit",fmt(margin)+" EGP","#111"]].map(([l,v,c],i)=>(
-                  <div key={i} style={{background:"#fafafa",border:"1px solid #ebebeb",borderRadius:10,padding:"12px 14px"}}>
+                  <div key={i} style={{background:"#fafafa",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:10,padding:"12px 14px"}}>
                     <div style={{fontSize:11,color:"#aaa",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px"}}>{l}</div>
                     <div style={{fontSize:17,fontWeight:700,color:c}}>{v}</div>
                   </div>
@@ -962,7 +1084,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
             {t.form.cancel}
           </button>
           <button onClick={handleSave} disabled={saving||saved}
-            style={{background:saved?"#111":saving?"#555":"#111",color:"#fff",border:"none",borderRadius:8,padding:"11px 32px",cursor:saving||saved?"default":"pointer",fontSize:14,fontWeight:600,transition:"all .2s",minWidth:130,boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>
+            style={{background:saved?"#0F8A5F":saving?"#6B8A82":TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"11px 32px",cursor:saving||saved?"default":"pointer",fontSize:14,fontWeight:600,transition:"all .2s",minWidth:130,boxShadow:"0 4px 14px rgba(15,110,86,0.30)"}}>
             {saved?"✓ "+t.form.saved:saving?t.form.saving:t.form.save}
           </button>
         </div>
@@ -974,13 +1096,13 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
 // ─── SampleCard (mobile) ──────────────────────────────────────────────────────
 function SampleCard({ s, t, onEdit, onDelete }) {
   return (
-    <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:16,marginBottom:10}}>
+    <div style={{background:TOK.surface,border:`1px solid ${TOK.line}`,borderRadius:12,padding:16,marginBottom:10}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
         <div>
-          <div style={{color:"#111",fontWeight:600,fontSize:15}}>{s.patientName}</div>
-          <div style={{color:"#111",fontSize:12,fontFamily:"monospace",marginTop:2}}>{s.sampleCode}</div>
+          <div style={{color:TOK.ink,fontWeight:600,fontSize:15}}>{s.patientName}</div>
+          <div style={{...NUM,color:TOK.ink2,fontSize:12,marginTop:2}}>{s.sampleCode}</div>
         </div>
-        <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:600,flexShrink:0,border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.08),0 0 0 1px rgba(0,0,0,0.04)"}}>
+        <span style={{background:(SC[s.status]||"#888")+"18",color:SC[s.status]||TOK.ink2,borderRadius:20,padding:"3px 11px",fontSize:12,fontWeight:600,flexShrink:0,border:`1px solid ${(SC[s.status]||"#888")}33`}}>
           {t.statuses[s.status]}
         </span>
       </div>
@@ -994,11 +1116,11 @@ function SampleCard({ s, t, onEdit, onDelete }) {
             const tat=getTAT(s.testType);
             const over=d2>tat.max;
             const warn=d2>tat.max*0.75;
-            const clr=over?"#dc2626":warn?"#d97706":"#16a34a";
-            return <span style={{color:clr,fontWeight:600}}>{d2}/{tat.max}d<br/><span style={{fontSize:10,color:"#aaa"}}>{tat.tat}</span></span>;
+            const clr=over?SC.overdue:warn?SC.abroad:SC.done;
+            return <span style={{...NUM,color:clr,fontWeight:600}}>{d2}/{tat.max}d<br/><span style={{fontSize:10,color:TOK.muted,fontFamily:TOK.sans}}>{tat.tat}</span></span>;
           })()}
         </div>
-        <div style={{fontSize:12,color:"#111"}}>{t.table.price}<br/><span style={{color:"#059669",fontWeight:600}}>{fmt(s.salePrice)} EGP</span></div>
+        <div style={{fontSize:12,color:"#111"}}>{t.table.price}<br/><span style={{...NUM,color:TOK.primary,fontWeight:600}}>{fmt(s.salePrice)} EGP</span></div>
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"3px 10px",fontSize:12,border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04)"}}>
@@ -1104,21 +1226,21 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:10}}>
-        <h2 style={{color:"#111",fontSize:mob?17:20,margin:0}}>{t.nav.samples} ({samples.length})</h2>
+        <h2 style={{color:TOK.ink,fontSize:mob?18:22,margin:0,fontWeight:700}}>{t.nav.samples} <span style={{...NUM,color:TOK.muted,fontWeight:500,fontSize:mob?15:18}}>({samples.length})</span></h2>
         <div style={{display:"flex",gap:8,flexShrink:0}}>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelUpload} style={{display:"none"}}/>
           <button onClick={()=>fileRef.current?.click()} disabled={importing}
-            style={{background:"#f5f5f7",color:"#111",border:"1px solid #e5e5e5",borderRadius:8,padding:"9px 14px",cursor:"pointer",fontSize:13,fontWeight:600}}>
-            {importing ? (ar?"جارٍ الرفع...":"Importing...") : (ar?"📄 رفع Excel":"📄 Upload Excel")}
+            style={{background:TOK.surface,color:TOK.ink,border:`1px solid ${TOK.line}`,borderRadius:8,padding:"9px 14px",cursor:"pointer",fontSize:13,fontWeight:600,display:"inline-flex",alignItems:"center",gap:7}}>
+            <Icon name="upload" size={15}/> {importing ? (ar?"جارٍ الرفع...":"Importing...") : (ar?"رفع Excel":"Upload Excel")}
           </button>
-          <button onClick={onAddNew} style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontSize:14,fontWeight:600}}>
-            + {mob?"":t.nav.newSample}
+          <button onClick={onAddNew} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontSize:14,fontWeight:600,display:"inline-flex",alignItems:"center",gap:6}}>
+            <Icon name="plus" size={16} color="#fff"/> {mob?"":t.nav.newSample}
           </button>
         </div>
       </div>
 
       <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 ..."
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={ar?"بحث...":"Search..."}
           style={{flex:1,minWidth:120,...inp(),padding:"10px 14px"}}/>
         <CustomSelect
           value={filterStatus}
@@ -1129,18 +1251,18 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
         <CustomSelect
           value={filterCountry}
           onChange={v=>setFilterCountry(v)}
-          options={[{value:"all",label:"🌍 "+(t.dir==="rtl"?"كل البلاد":"All Countries")}, ...countries.filter(c=>c!=="all").map(c=>({value:c,label:`${c} (${samples.filter(s=>getCountry(s.externalLab)===c).length})`}))]}
+          options={[{value:"all",label:(t.dir==="rtl"?"كل البلاد":"All Countries")}, ...countries.filter(c=>c!=="all").map(c=>({value:c,label:`${c} (${samples.filter(s=>getCountry(s.externalLab)===c).length})`}))]}
           style={{width:"auto",minWidth:140}}
         />
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
         <div style={{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:200}}>
-          <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}>📅 {ar?"من":"From"}</span>
+          <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"من":"From"}</span>
           <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
             style={{...inp(),padding:"8px 10px",fontSize:13,flex:1}}/>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:200}}>
-          <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}>📅 {ar?"إلى":"To"}</span>
+          <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"إلى":"To"}</span>
           <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
             style={{...inp(),padding:"8px 10px",fontSize:13,flex:1}}/>
         </div>
@@ -1160,12 +1282,12 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
       {mob ? (
         filtered.map(s=><SampleCard key={s.id} s={s} t={t} onEdit={onEdit} onDelete={onDelete}/>)
       ) : (
-        <div style={{background:"#fafafa",borderRadius:12,border:"1px solid #e2e8f0",overflow:"auto"}}>
+        <div style={{background:TOK.surface,borderRadius:12,border:`1px solid ${TOK.line}`,overflow:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:700}}>
             <thead>
-              <tr style={{background:"#fafafa"}}>
+              <tr style={{background:"#F1F6F4"}}>
                 {[t.table.code,t.table.patient,t.table.test,t.dir==="rtl"?"البلد":"Country",t.dir==="rtl"?"تاريخ الاستلام":"Receiving Date",t.table.days,t.table.status,t.table.price,""].map((h,i)=>(
-                  <th key={i} style={{padding:"11px 12px",color:"#111",fontWeight:600,textAlign:"start",fontSize:12,whiteSpace:"nowrap"}}>{h}</th>
+                  <th key={i} style={{padding:"10px 12px",color:TOK.ink2,fontWeight:600,textAlign:"start",fontSize:11,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1173,31 +1295,31 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
               {filtered.map((s,i)=>{
                 const d=sampleAge(s);
                 return (
-                  <tr key={s.id} style={{borderTop:"1px solid #f0f0f0",background:i%2===0?"#ffffff":"#f1f5f9"}}>
-                    <td style={{padding:"10px 12px",color:"#111",fontFamily:"monospace",whiteSpace:"nowrap"}}>{s.sampleCode}</td>
+                  <tr key={s.id} style={{borderTop:`1px solid ${TOK.line}`,background:i%2===0?"#ffffff":"#F7FAF9"}}>
+                    <td style={{padding:"10px 12px",...NUM,color:TOK.ink2,whiteSpace:"nowrap"}}>{s.sampleCode}</td>
                     <td style={{padding:"10px 12px"}}>
-                      <div style={{color:"#111",fontWeight:500}}>{s.patientName}</div>
-                      {s.doctor&&<div style={{fontSize:11,color:"#111"}}>{s.doctor}</div>}
+                      <div style={{color:TOK.ink,fontWeight:600}}>{s.patientName}</div>
+                      {s.doctor&&<div style={{fontSize:11,color:TOK.ink2}}>{s.doctor}</div>}
                     </td>
                     <td style={{padding:"10px 12px",color:"#111",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.testType}</td>
                     <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
                       <span style={{background:"#f5f5f7",color:"#555",borderRadius:6,padding:"3px 8px",fontSize:12,fontWeight:500}}>{getCountry(s.externalLab)}</span>
                     </td>
-                    <td style={{padding:"10px 12px",color:"#111",whiteSpace:"nowrap"}}>{s.collectDate||s.sentDate}</td>
+                    <td style={{padding:"10px 12px",...NUM,color:TOK.ink2,whiteSpace:"nowrap"}}>{s.collectDate||s.sentDate}</td>
                     <td style={{padding:"10px 12px",textAlign:"center",minWidth:80}}>
                       {(()=>{
                         const tat=getTAT(s.testType);
                         const pct=Math.min(100,Math.round((d/tat.max)*100));
                         const over=d>tat.max;
                         const warn=d>tat.max*0.75;
-                        const clr=over?"#dc2626":warn?"#d97706":"#16a34a";
+                        const clr=over?SC.overdue:warn?SC.abroad:SC.done;
                         return (
                           <div>
-                            <div style={{fontSize:12,fontWeight:600,color:clr,marginBottom:3}}>{d}/{tat.max}d</div>
-                            <div style={{background:"#ebebeb",borderRadius:4,height:5,width:60,margin:"0 auto"}}>
+                            <div style={{...NUM,fontSize:12,fontWeight:600,color:clr,marginBottom:3}}>{d}/{tat.max}d</div>
+                            <div style={{background:"#EDF1EF",borderRadius:4,height:5,width:60,margin:"0 auto"}}>
                               <div style={{width:pct+"%",background:clr,borderRadius:4,height:5,transition:"width .3s"}}/>
                             </div>
-                            <div style={{fontSize:10,color:"#aaa",marginTop:2}}>{tat.tat}</div>
+                            <div style={{fontSize:10,color:TOK.muted,marginTop:2}}>{tat.tat}</div>
                           </div>
                         );
                       })()}
@@ -1221,10 +1343,10 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
                         ))}
                       </select>
                     </td>
-                    <td style={{padding:"10px 12px",color:"#059669",whiteSpace:"nowrap"}}>{fmt(s.salePrice)} EGP</td>
+                    <td style={{padding:"10px 12px",...NUM,color:TOK.primary,fontWeight:600,whiteSpace:"nowrap"}}>{fmt(s.salePrice)} <span style={{fontSize:10,color:TOK.muted}}>EGP</span></td>
                     <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
-                      <button onClick={()=>onEdit(s.id)} style={{background:"transparent",color:"#555",border:"1px solid #e5e5e5",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,marginInlineEnd:6}}>{t.table.edit}</button>
-                      <button onClick={()=>onDelete(s.id)} style={{background:"transparent",color:"#aaa",border:"1px solid #e5e5e5",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12}}>{t.table.del}</button>
+                      <button onClick={()=>onEdit(s.id)} style={{background:"transparent",color:TOK.ink2,border:`1px solid ${TOK.line}`,borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,marginInlineEnd:6}}>{t.table.edit}</button>
+                      <button onClick={()=>onDelete(s.id)} style={{background:"transparent",color:SC.overdue,border:`1px solid ${TOK.line}`,borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12}}>{t.table.del}</button>
                     </td>
                   </tr>
                 );
@@ -1263,14 +1385,14 @@ function Accounting({ t, samples, setSamples }) {
       <h2 style={{color:"#111",fontSize:mob?17:21,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px"}}>{t.accounting.title}</h2>
 
       {/* ── Filters ── */}
-      <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+      <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:12,alignItems:"end"}}>
           <div>
-            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>📅 {ar?"من":"From"}</label>
+            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"من":"From"}</label>
             <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{...inp(),padding:"9px 12px",fontSize:13}}/>
           </div>
           <div>
-            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>📅 {ar?"إلى":"To"}</label>
+            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"إلى":"To"}</label>
             <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{...inp(),padding:"9px 12px",fontSize:13}}/>
           </div>
           <div>
@@ -1296,13 +1418,13 @@ function Accounting({ t, samples, setSamples }) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,1fr)",gap:12,marginBottom:22}}>
         {[
-          [t.accounting.revenue,fmt(revenue),"#6366f1"],
+          [t.accounting.revenue,fmt(revenue),"#0F6E56"],
           [t.accounting.cost,fmt(cost),"#ef4444"],
-          [t.accounting.profit,fmt(revenue-cost),"#10b981"],
-          [t.accounting.collected,fmt(collected),"#f59e0b"],
+          [t.accounting.profit,fmt(revenue-cost),"#0F8A5F"],
+          [t.accounting.collected,fmt(collected),"#B26B00"],
           [t.accounting.remaining,fmt(revenue-collected),"#8b5cf6"],
         ].map(([l,v,c],i)=>(
-          <div key={i} style={{background:"#fafafa",border:"1px solid #ebebeb",borderRadius:11,padding:"14px",borderTop:`3px solid ${c}`}}>
+          <div key={i} style={{background:"#fafafa",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:11,padding:"14px",borderTop:`3px solid ${c}`}}>
             <div style={{fontSize:mob?16:18,fontWeight:700,color:c}}>{v}</div>
             <div style={{fontSize:11,color:"#111",marginTop:3}}>{l}</div>
           </div>
@@ -1314,15 +1436,15 @@ function Accounting({ t, samples, setSamples }) {
           const margin=Number(s.salePrice||0)-Number(s.labCost||0);
           const rem=Number(s.salePrice||0)-Number(s.deposit||0);
           return (
-            <div key={s.id} style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:14,marginBottom:10}}>
+            <div key={s.id} style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:14,marginBottom:10}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
                 <div style={{color:"#111",fontWeight:600}}>{s.patientName}</div>
                 <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"2px 8px",fontSize:12,border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04)"}}>{t.payStatus[s.paymentStatus]}</span>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-                <div style={{fontSize:12}}><div style={{color:"#111",marginBottom:2}}>Sale</div><div style={{color:"#059669",fontWeight:600}}>{fmt(s.salePrice)}</div></div>
+                <div style={{fontSize:12}}><div style={{color:"#111",marginBottom:2}}>Sale</div><div style={{color:"#0F6E56",fontWeight:600}}>{fmt(s.salePrice)}</div></div>
                 <div style={{fontSize:12}}><div style={{color:"#111",marginBottom:2}}>Cost</div><div style={{color:"#f87171"}}>{fmt(s.labCost)}</div></div>
-                <div style={{fontSize:12}}><div style={{color:"#111",marginBottom:2}}>Margin</div><div style={{color:margin>=0?"#10b981":"#ef4444",fontWeight:600}}>{fmt(margin)}</div></div>
+                <div style={{fontSize:12}}><div style={{color:"#111",marginBottom:2}}>Margin</div><div style={{color:margin>=0?"#0F8A5F":"#ef4444",fontWeight:600}}>{fmt(margin)}</div></div>
               </div>
               {s.paymentStatus!=="paid"&&(
                 <button onClick={()=>{const u={...s,paymentStatus:"paid",deposit:s.salePrice};setSamples(p=>p.map(x=>x.id===s.id?u:x));upsertSample(u);}}
@@ -1334,7 +1456,7 @@ function Accounting({ t, samples, setSamples }) {
           );
         })
       ) : (
-        <div style={{background:"#fafafa",borderRadius:12,border:"1px solid #e2e8f0",overflow:"auto"}}>
+        <div style={{background:"#fafafa",borderRadius:12,border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",overflow:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:600}}>
             <thead>
               <tr style={{background:"#fafafa"}}>
@@ -1349,13 +1471,13 @@ function Accounting({ t, samples, setSamples }) {
                 const rem=Number(s.salePrice||0)-Number(s.deposit||0);
                 return (
                   <tr key={s.id} style={{borderTop:"1px solid #f0f0f0",background:i%2===0?"#ffffff":"#fafafa"}}>
-                    <td style={{padding:"10px 12px",color:"#111",fontFamily:"monospace"}}>{s.sampleCode}</td>
+                    <td style={{padding:"10px 12px",color:"#111",fontFamily:TOK.mono}}>{s.sampleCode}</td>
                     <td style={{padding:"10px 12px",color:"#111",fontWeight:500}}>{s.patientName}</td>
-                    <td style={{padding:"10px 12px",color:"#059669"}}>{fmt(s.salePrice)}</td>
+                    <td style={{padding:"10px 12px",color:"#0F6E56"}}>{fmt(s.salePrice)}</td>
                     <td style={{padding:"10px 12px",color:"#f87171"}}>{fmt(s.labCost)}</td>
-                    <td style={{padding:"10px 12px",color:margin>=0?"#10b981":"#ef4444",fontWeight:600}}>{fmt(margin)}</td>
-                    <td style={{padding:"10px 12px",color:"#f59e0b"}}>{fmt(s.deposit)}</td>
-                    <td style={{padding:"10px 12px",color:rem>0?"#f59e0b":"#10b981",fontWeight:600}}>{fmt(rem)}</td>
+                    <td style={{padding:"10px 12px",color:margin>=0?"#0F8A5F":"#ef4444",fontWeight:600}}>{fmt(margin)}</td>
+                    <td style={{padding:"10px 12px",color:"#B26B00"}}>{fmt(s.deposit)}</td>
+                    <td style={{padding:"10px 12px",color:rem>0?"#B26B00":"#0F8A5F",fontWeight:600}}>{fmt(rem)}</td>
                     <td style={{padding:"10px 12px"}}>
                       <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"3px 10px",fontSize:12,border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04)"}}>{t.payStatus[s.paymentStatus]}</span>
                     </td>
@@ -1384,8 +1506,8 @@ function Reports({ t, samples }) {
     <div>
       <h2 style={{color:"#111",fontSize:mob?17:21,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px"}}>{t.reports.title}</h2>
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14,marginBottom:14}}>
-        <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:16}}>
-          <div style={{fontWeight:600,color:"#111",marginBottom:14}}>📊 {t.reports.byStatus}</div>
+        <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
+          <div style={{fontWeight:600,color:"#111",marginBottom:14,display:"flex",alignItems:"center",gap:7}}><Icon name="sheet" size={16} color={TOK.primary}/> {t.reports.byStatus}</div>
           {Object.entries(t.statuses).map(([k,label])=>{
             const c=samples.filter(s=>s.status===k).length;
             const pct=samples.length?Math.round(c/samples.length*100):0;
@@ -1401,12 +1523,12 @@ function Reports({ t, samples }) {
             );
           })}
         </div>
-        <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:16}}>
+        <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
           <div style={{fontWeight:600,color:"#111",marginBottom:14}}>🏥 {t.reports.byLab}</div>
           {[...new Set(samples.map(s=>s.externalLab).filter(Boolean))].map((lab,i)=>{
             const c=samples.filter(s=>s.externalLab===lab).length;
             const rev=samples.filter(s=>s.externalLab===lab).reduce((a,s)=>a+Number(s.salePrice||0),0);
-            const colors=["#6366f1","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"];
+            const colors=["#0F6E56","#2563EB","#0F8A5F","#B26B00","#ef4444","#8b5cf6"];
             return (
               <div key={lab} style={{display:"flex",alignItems:"center",gap:8,marginBottom:11,flexWrap:"wrap"}}>
                 <div style={{width:10,height:10,borderRadius:3,background:"#aaa",flexShrink:0}}/>
@@ -1419,14 +1541,14 @@ function Reports({ t, samples }) {
         </div>
       </div>
       <div style={{background:"#fafafa",border:`1px solid ${overdue.length?"#fca5a5":"#e2e8f0"}`,borderRadius:12,padding:16}}>
-        <div style={{fontWeight:600,color:overdue.length?"#991b1b":"#000000",marginBottom:12}}>🚨 {t.reports.overdue}</div>
+        <div style={{fontWeight:600,color:overdue.length?"#991b1b":"#000000",marginBottom:12,display:"flex",alignItems:"center",gap:7}}><Icon name="alert" size={15} color={overdue.length?"#C7362F":"#000"}/> {t.reports.overdue}</div>
         {overdue.length===0 ? (
-          <div style={{color:"#10b981",fontSize:14}}>{t.reports.noOverdue}</div>
+          <div style={{color:"#0F8A5F",fontSize:14}}>{t.reports.noOverdue}</div>
         ) : overdue.map(s=>(
           <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:"1px solid #f0f0f0",gap:10}}>
             <div style={{minWidth:0,flex:1}}>
               <div style={{color:"#111",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
-              <div style={{fontSize:11,color:"#888",marginTop:1}}>{s.sampleCode} · {s.testType}</div>
+              <div style={{fontSize:11,color:"#888",marginTop:1}}><span style={{...NUM,color:TOK.ink2}}>{s.sampleCode}</span> · {s.testType}</div>
               <div style={{marginTop:6}}>
                 {(()=>{
                   const d3=daysSince(s.sentDate);
@@ -1437,10 +1559,10 @@ function Reports({ t, samples }) {
                     <div>
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}>
                         <span style={{color:"#888"}}>TAT: {tat.tat}</span>
-                        <span style={{color:"#dc2626",fontWeight:700}}>+{extra} {t.table.days} {t.dir==="rtl"?"متأخر":"overdue"}</span>
+                        <span style={{color:"#C7362F",fontWeight:700}}>+{extra} {t.table.days} {t.dir==="rtl"?"متأخر":"overdue"}</span>
                       </div>
                       <div style={{background:"#ebebeb",borderRadius:4,height:6}}>
-                        <div style={{width:pct+"%",background:"#dc2626",borderRadius:4,height:6}}/>
+                        <div style={{width:pct+"%",background:"#C7362F",borderRadius:4,height:6}}/>
                       </div>
                     </div>
                   );
@@ -1448,7 +1570,7 @@ function Reports({ t, samples }) {
               </div>
             </div>
             <div style={{textAlign:"end",flexShrink:0}}>
-              <div style={{color:"#dc2626",fontWeight:700,fontSize:22}}>{daysSince(s.sentDate)}</div>
+              <div style={{color:"#C7362F",fontWeight:700,fontSize:22}}>{daysSince(s.sentDate)}</div>
               <div style={{fontSize:10,color:"#aaa"}}>{t.table.days}</div>
             </div>
           </div>
@@ -1518,7 +1640,7 @@ function ClientsPage({ t, samples, isAdmin }) {
     if (inScope(s)) labMap[lab].periodSamples.push(s);
   });
 
-  const labColors = ["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#ec4899"];
+  const labColors = ["#0F6E56","#0F8A5F","#B26B00","#ef4444","#2563EB","#8b5cf6","#ec4899"];
   const labs = Object.entries(labMap).sort((a,b)=>b[1].periodSamples.length - a[1].periodSamples.length);
 
   const totalPeriodRevenue = labs.reduce((sum,[,v])=>sum+v.periodSamples.reduce((a,s)=>a+Number(s.salePrice||0),0),0);
@@ -1555,7 +1677,7 @@ function ClientsPage({ t, samples, isAdmin }) {
         <div style={{display:"flex",background:"#fafafa",borderRadius:8,padding:3,gap:2}}>
           {[["labs",ar?"العملاء":"Clients"],["patients",ar?"المرضى":"Patients"]].map(([v,l])=>(
             <button key={v} onClick={()=>setView(v)}
-              style={{padding:"5px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view===v?"#111":"transparent",color:view===v?"#fff":"#888",boxShadow:view===v?"0 1px 4px rgba(0,0,0,0.1)":"none",transition:"all .15s"}}>
+              style={{padding:"5px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view===v?TOK.primary:"transparent",color:view===v?"#fff":"#888",boxShadow:view===v?"0 1px 4px rgba(15,110,86,0.2)":"none",transition:"all .15s"}}>
               {l}
             </button>
           ))}
@@ -1563,13 +1685,13 @@ function ClientsPage({ t, samples, isAdmin }) {
       </div>
 
       {/* ── Filters bar ── */}
-      <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px 16px",marginBottom:18}}>
+      <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:18}}>
         {/* Quick presets */}
         <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
           <span style={{fontSize:12,fontWeight:600,color:"#555",marginInlineEnd:4}}>{ar?"فترة سريعة:":"Quick:"}</span>
           {presets.map(([v,l])=>(
             <button key={v} onClick={()=>applyPreset(v)}
-              style={{padding:"4px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:period===v?"#6366f1":"#f1f5f9",color:period===v?"#ffffff":"#6b7280",transition:"all .15s"}}>
+              style={{padding:"4px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:period===v?"#0F6E56":"#f1f5f9",color:period===v?"#ffffff":"#6b7280",transition:"all .15s"}}>
               {l}
             </button>
           ))}
@@ -1579,14 +1701,14 @@ function ClientsPage({ t, samples, isAdmin }) {
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:10,alignItems:"end"}}>
           <div>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>
-              📅 {ar?"من":"From"} <span style={{color:"#6366f1",fontWeight:400,fontSize:11}}>({dateLabel})</span>
+              <Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"من":"From"} <span style={{color:"#0F6E56",fontWeight:400,fontSize:11}}>({dateLabel})</span>
             </label>
             <input type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setPeriod("custom");}}
               style={{...inp(),padding:"8px 12px",fontSize:13}}/>
           </div>
           <div>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>
-              📅 {ar?"إلى":"To"} <span style={{color:"#6366f1",fontWeight:400,fontSize:11}}>({dateLabel})</span>
+              <Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"إلى":"To"} <span style={{color:"#0F6E56",fontWeight:400,fontSize:11}}>({dateLabel})</span>
             </label>
             <input type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setPeriod("custom");}}
               style={{...inp(),padding:"8px 12px",fontSize:13}}/>
@@ -1607,7 +1729,7 @@ function ClientsPage({ t, samples, isAdmin }) {
         {(dateFrom||dateTo||statusFilter!=="all") && (
           <div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
             <div style={{fontSize:12,color:"#111",fontWeight:500}}>
-              🔍 {rangeLabel}{statusFilter!=="all"?` · ${t.statuses[statusFilter]}`:""}
+              <Icon name="search" size={13} style={{verticalAlign:"-2px",marginInlineEnd:4}}/>{rangeLabel}{statusFilter!=="all"?` · ${t.statuses[statusFilter]}`:""}
               {" — "}{totalPeriodSamples} {ar?"عينة":"samples"}
             </div>
             <button onClick={()=>{setDateFrom("");setDateTo("");setStatusFilter("all");setPeriod("all");}}
@@ -1625,9 +1747,9 @@ function ClientsPage({ t, samples, isAdmin }) {
           {isAdmin && (
             <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
               {[
-                {l:ar?"إجمالي الإيرادات":"Total Revenue", v:fmt(totalPeriodRevenue)+" EGP", c:"#6366f1"},
+                {l:ar?"إجمالي الإيرادات":"Total Revenue", v:fmt(totalPeriodRevenue)+" EGP", c:"#0F6E56"},
                 {l:ar?"إجمالي التكاليف":"Total Cost",    v:fmt(totalPeriodCost)+" EGP",    c:"#ef4444"},
-                {l:ar?"صافي الربح":"Net Profit",         v:fmt(totalPeriodRevenue-totalPeriodCost)+" EGP", c:"#10b981"},
+                {l:ar?"صافي الربح":"Net Profit",         v:fmt(totalPeriodRevenue-totalPeriodCost)+" EGP", c:"#0F8A5F"},
               ].map((card,i)=>(
                 <div key={i} style={{background:"#ffffff",border:`1px solid ${card.c}33`,borderRadius:12,padding:16,borderTop:`3px solid ${card.c}`}}>
                   <div style={{fontSize:mob?18:22,fontWeight:700,color:card.c}}>{card.v}</div>
@@ -1679,7 +1801,7 @@ function ClientsPage({ t, samples, isAdmin }) {
                     {/* Status pills */}
                     <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
                       <span style={{background:"#f5f5f7",color:"#15803d",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600}}>✓ {done} {ar?"خلصت":"done"}</span>
-                      {overdue>0 && <span style={{background:"#fafafa",color:"#be123c",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600}}>⚠ {overdue} {ar?"متأخرة":"overdue"}</span>}
+                      {overdue>0 && <span style={{background:"#fafafa",color:"#be123c",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600,display:"inline-flex",alignItems:"center",gap:4}}><Icon name="alert" size={11} color="#be123c"/> {overdue} {ar?"متأخرة":"overdue"}</span>}
                       <span style={{background:"#fafafa",color:"#888",borderRadius:6,padding:"2px 8px",fontSize:11}}>{ps.length-done-overdue} {ar?"جارية":"in progress"}</span>
                     </div>
 
@@ -1693,20 +1815,20 @@ function ClientsPage({ t, samples, isAdmin }) {
                               <div style={{minWidth:0,flex:1}}>
                                 <div style={{fontWeight:600,fontSize:12,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
                                 <div style={{fontSize:10,color:"#aaa",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
-                                  <span style={{fontFamily:"monospace"}}>{s.sampleCode}</span>
+                                  <span style={{fontFamily:TOK.mono}}>{s.sampleCode}</span>
                                   <span>·</span>
                                   <span>{s.testType}</span>
                                 </div>
                                 {(s.collectDate||s.sentDate) && (
                                   <div style={{fontSize:10,color:"#aaa",marginTop:1}}>
-                                    📅 {s.collectDate||s.sentDate}
-                                    {s.shipmentNumber && <span style={{marginInlineStart:6,color:clr,fontFamily:"monospace"}}>🚚 {s.shipmentNumber}</span>}
+                                    <Icon name="calendar" size={11} style={{verticalAlign:"-2px",marginInlineEnd:4}}/><span style={NUM}>{s.collectDate||s.sentDate}</span>
+                                    {s.shipmentNumber && <span style={{marginInlineStart:6,color:clr}}><Icon name="truck" size={11} color={clr} style={{verticalAlign:"-2px",marginInlineEnd:3}}/><span style={{fontFamily:TOK.mono}}>{s.shipmentNumber}</span></span>}
                                   </div>
                                 )}
                               </div>
                               <div style={{flexShrink:0,textAlign:"end"}}>
                                 <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600,display:"block",whiteSpace:"nowrap",border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04)"}}>{t.statuses[s.status]}</span>
-                                {isAdmin && s.salePrice && <div style={{fontSize:10,color:"#6366f1",marginTop:2,fontWeight:600}}>{fmt(s.salePrice)} EGP</div>}
+                                {isAdmin && s.salePrice && <div style={{fontSize:10,color:"#0F6E56",marginTop:2,fontWeight:600}}>{fmt(s.salePrice)} EGP</div>}
                               </div>
                             </div>
                           ))}
@@ -1717,10 +1839,10 @@ function ClientsPage({ t, samples, isAdmin }) {
                           const shipNums = [...new Set(ps.map(s=>s.shipmentNumber).filter(Boolean))];
                           return shipNums.length > 0 ? (
                             <div style={{marginTop:10,padding:"8px 10px",background:"#f5f5f7",borderRadius:8}}>
-                              <div style={{fontSize:11,fontWeight:600,color:"#111",marginBottom:4}}>🚚 {ar?"الشحنات":"Shipments"} ({shipNums.length})</div>
+                              <div style={{fontSize:11,fontWeight:600,color:"#111",marginBottom:4,display:"flex",alignItems:"center",gap:6}}><Icon name="truck" size={13} color={TOK.primary}/> {ar?"الشحنات":"Shipments"} ({shipNums.length})</div>
                               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                 {shipNums.map(sn=>(
-                                  <span key={sn} style={{background:"#ffffff",border:"1px solid #e5e5e5",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#111",fontFamily:"monospace"}}>{sn}</span>
+                                  <span key={sn} style={{background:"#ffffff",border:"1px solid #e5e5e5",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#111",fontFamily:TOK.mono}}>{sn}</span>
                                 ))}
                               </div>
                             </div>
@@ -1733,9 +1855,9 @@ function ClientsPage({ t, samples, isAdmin }) {
                     {isAdmin && (
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,borderTop:"1px solid #f0f0f0",paddingTop:12}}>
                         {[
-                          [ar?"إيرادات":"Revenue", fmt(revenue), "#6366f1"],
+                          [ar?"إيرادات":"Revenue", fmt(revenue), "#0F6E56"],
                           [ar?"تكلفة":"Cost",      fmt(cost),    "#ef4444"],
-                          [ar?"ربح":"Profit",      fmt(profit),  profit>=0?"#10b981":"#ef4444"],
+                          [ar?"ربح":"Profit",      fmt(profit),  profit>=0?"#0F8A5F":"#ef4444"],
                         ].map(([l,v,c],i)=>(
                           <div key={i} style={{textAlign:"center"}}>
                             <div style={{fontSize:13,fontWeight:700,color:c}}>{v}</div>
@@ -1756,7 +1878,7 @@ function ClientsPage({ t, samples, isAdmin }) {
       {view==="patients" && (
         <div>
           <input value={search} onChange={e=>setSearch(e.target.value)}
-            placeholder="🔍 ..."
+            placeholder={ar?"بحث...":"Search..."}
             style={{width:"100%",boxSizing:"border-box",...inp(),padding:"10px 14px",marginBottom:14}}/>
           <div style={{marginBottom:10,fontSize:13,color:"#888"}}>{clients.length} {ar?"عميل":"clients"}</div>
           <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
@@ -1764,7 +1886,7 @@ function ClientsPage({ t, samples, isAdmin }) {
               const paid = samps.filter(s=>s.paymentStatus==="paid").length;
               const totalRev = samps.reduce((a,s)=>a+Number(s.salePrice||0),0);
               return (
-                <div key={name} style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:16}}>
+                <div key={name} style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                     <div style={{minWidth:0}}>
                       <div style={{fontWeight:700,fontSize:14,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</div>
@@ -1774,16 +1896,16 @@ function ClientsPage({ t, samples, isAdmin }) {
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
                     <div style={{background:"#fafafa",borderRadius:8,padding:"8px",textAlign:"center"}}>
-                      <div style={{fontSize:15,fontWeight:700,color:"#10b981"}}>{samps.filter(s=>s.status==="done").length}</div>
+                      <div style={{fontSize:15,fontWeight:700,color:"#0F8A5F"}}>{samps.filter(s=>s.status==="done").length}</div>
                       <div style={{fontSize:10,color:"#888"}}>{ar?"خلصت":"Done"}</div>
                     </div>
                     <div style={{background:"#fafafa",borderRadius:8,padding:"8px",textAlign:"center"}}>
-                      <div style={{fontSize:15,fontWeight:700,color:paid===samps.length?"#10b981":"#f59e0b"}}>{paid}/{samps.length}</div>
+                      <div style={{fontSize:15,fontWeight:700,color:paid===samps.length?"#0F8A5F":"#B26B00"}}>{paid}/{samps.length}</div>
                       <div style={{fontSize:10,color:"#888"}}>{ar?"مدفوع":"Paid"}</div>
                     </div>
                     {isAdmin && (
                       <div style={{background:"#fafafa",borderRadius:8,padding:"8px",textAlign:"center"}}>
-                        <div style={{fontSize:13,fontWeight:700,color:"#6366f1"}}>{fmt(totalRev)}</div>
+                        <div style={{fontSize:13,fontWeight:700,color:"#0F6E56"}}>{fmt(totalRev)}</div>
                         <div style={{fontSize:10,color:"#888"}}>EGP</div>
                       </div>
                     )}
@@ -1858,11 +1980,11 @@ function ResultsPage({ t, samples, setSamples }) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",gap:10}}>
           <div style={{minWidth:0,flex:1}}>
             <div style={{fontWeight:600,color:"#111",fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
-            <div style={{fontSize:11,color:"#888",marginTop:1}}>{s.sampleCode} · {s.testType}</div>
+            <div style={{fontSize:11,color:"#888",marginTop:1}}><span style={{...NUM,color:TOK.ink2}}>{s.sampleCode}</span> · {s.testType}</div>
             <div style={{fontSize:11,color:"#888",marginTop:1}}>{s.externalLab}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-            <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:600,whiteSpace:"nowrap",border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.08),0 0 0 1px rgba(0,0,0,0.04)"}}>{t.statuses[s.status]}</span>
+            <span style={{background:(SC[s.status]||"#888")+"18",color:SC[s.status]||TOK.ink2,borderRadius:20,padding:"3px 11px",fontSize:12,fontWeight:600,whiteSpace:"nowrap",border:`1px solid ${(SC[s.status]||"#888")}33`}}>{t.statuses[s.status]}</span>
             <button onClick={()=>{ setMarkingId(isMarking?null:s.id); setResultNote(""); setPdfData(null); setPdfName(""); }}
               style={{background:isMarking?"#f1f5f9":"#f0fdf4",color:isMarking?"#374151":"#15803d",border:`1px solid ${isMarking?"#e2e8f0":"#86efac"}`,borderRadius:7,padding:"6px 12px",cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>
               {isMarking?(ar?"إلغاء":"Cancel"):(ar?"تسجيل النتيجة":"Mark Done")} {isMarking?"":"✓"}
@@ -1883,13 +2005,13 @@ function ResultsPage({ t, samples, setSamples }) {
             </div>
 
             <div style={{marginTop:12}}>
-              <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:6}}>
-                📎 {ar?"رفع ملف النتيجة (اختياري)":"Upload Result File (optional)"}
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:"#555",marginBottom:6}}>
+                <Icon name="paperclip" size={13} color="#5B6B67"/> {ar?"رفع ملف النتيجة (اختياري)":"Upload Result File (optional)"}
               </label>
               <label style={{display:"flex",alignItems:"center",gap:10,background:"#ffffff",border:"1.5px dashed #d1d5db",borderRadius:8,padding:"10px 14px",cursor:"pointer",transition:"border-color .15s"}}
-                onMouseEnter={e=>e.currentTarget.style.borderColor="#6366f1"}
+                onMouseEnter={e=>e.currentTarget.style.borderColor="#0F6E56"}
                 onMouseLeave={e=>e.currentTarget.style.borderColor="#d1d5db"}>
-                <span style={{fontSize:20}}>📄</span>
+                <Icon name="file" size={20} color="#5B6B67"/>
                 <div>
                   <div style={{fontSize:13,color:"#111",fontWeight:500}}>{pdfData?pdfName:(ar?"اختر ملف PDF":"Choose PDF file")}</div>
                   <div style={{fontSize:11,color:"#aaa"}}>{ar?"PDF, صورة، أي ملف — حد أقصى 10MB":"PDF, image, any file — Max 10MB"}</div>
@@ -1905,7 +2027,7 @@ function ResultsPage({ t, samples, setSamples }) {
             </div>
 
             <button onClick={()=>handleMarkDone(s.id)}
-              style={{marginTop:12,width:"100%",background:"#16a34a",color:"#fff",border:"none",borderRadius:8,padding:"10px",cursor:"pointer",fontSize:14,fontWeight:700}}>
+              style={{marginTop:12,width:"100%",background:"#0F8A5F",color:"#fff",border:"none",borderRadius:8,padding:"10px",cursor:"pointer",fontSize:14,fontWeight:700}}>
               ✓ {ar?"تأكيد وصول النتيجة":"Confirm Result Received"}
             </button>
           </div>
@@ -1941,14 +2063,14 @@ function ResultsPage({ t, samples, setSamples }) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",gap:10}}>
           <div style={{minWidth:0,flex:1,cursor:"pointer"}} onClick={()=>{setViewingId(isViewing?null:s.id);setEditing(false);}}>
             <div style={{fontWeight:600,color:"#111",fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
-            <div style={{fontSize:11,color:"#888",marginTop:1}}>{s.sampleCode} · {s.testType}</div>
-            {s.resultDate && <div style={{fontSize:11,color:"#888",marginTop:1}}>✓ {s.resultDate}</div>}
+            <div style={{fontSize:11,color:"#888",marginTop:1}}><span style={{...NUM,color:TOK.ink2}}>{s.sampleCode}</span> · {s.testType}</div>
+            {s.resultDate && <div style={{fontSize:11,color:"#888",marginTop:1}}>✓ <span style={{...NUM}}>{s.resultDate}</span></div>}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-            {s.resultPdf && <span style={{background:"#fafafa",border:"1px solid #e5e5e5",color:"#555",borderRadius:6,padding:"2px 7px",fontSize:10}}>📎</span>}
-            {s.resultNote && <span style={{background:"#fafafa",border:"1px solid #e5e5e5",color:"#555",borderRadius:6,padding:"2px 7px",fontSize:10}}>📝</span>}
+            {s.resultPdf && <span style={{background:"#fafafa",border:"1px solid #e5e5e5",color:"#555",borderRadius:6,padding:"3px 6px",display:"inline-flex"}}><Icon name="paperclip" size={12} color="#5B6B67"/></span>}
+            {s.resultNote && <span style={{background:"#fafafa",border:"1px solid #e5e5e5",color:"#555",borderRadius:6,padding:"3px 6px",display:"inline-flex"}}><Icon name="fileText" size={12} color="#5B6B67"/></span>}
             <button onClick={()=>{setEditing(e=>!e);setViewingId(s.id);setEditNote(s.resultNote||"");setEditPdf(s.resultPdf||null);setEditPdfName(s.resultPdfName||"");}}
-              style={{background:editing?"#111":"#fafafa",color:editing?"#fff":"#555",border:"1px solid #e5e5e5",borderRadius:6,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:600}}>
+              style={{background:editing?TOK.primary:"#fafafa",color:editing?"#fff":"#555",border:"1px solid #e5e5e5",borderRadius:6,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:600}}>
               {editing?(ar?"إغلاق":"Close"):(ar?"تعديل":"Edit")}
             </button>
             <span style={{color:"#aaa",fontSize:13,cursor:"pointer"}} onClick={()=>setViewingId(isViewing?null:s.id)}>{isViewing?"▲":"▼"}</span>
@@ -1971,11 +2093,11 @@ function ResultsPage({ t, samples, setSamples }) {
                     placeholder={ar?"أضف ملاحظات على النتيجة...":"Add result notes..."}/>
                 </div>
                 <div style={{marginBottom:14}}>
-                  <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:6}}>
-                    📎 {ar?"رفع ملف":"Upload File"}
+                  <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:"#555",marginBottom:6}}>
+                    <Icon name="paperclip" size={13} color="#5B6B67"/> {ar?"رفع ملف":"Upload File"}
                   </label>
                   <label style={{display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1.5px dashed #d1d5db",borderRadius:8,padding:"10px 14px",cursor:"pointer"}}>
-                    <span style={{fontSize:20}}>📎</span>
+                    <Icon name="file" size={20} color="#5B6B67"/>
                     <div>
                       <div style={{fontSize:13,color:"#111",fontWeight:500}}>{editPdf?editPdfName:(ar?"اختر ملف":"Choose File")}</div>
                       <div style={{fontSize:11,color:"#aaa"}}>{ar?"PDF، صورة، أي ملف — 10MB":"PDF, image, any file — 10MB"}</div>
@@ -1993,7 +2115,7 @@ function ResultsPage({ t, samples, setSamples }) {
                   <button onClick={()=>setEditing(false)} style={{background:"#fafafa",border:"1px solid #e5e5e5",color:"#888",borderRadius:7,padding:"8px 16px",cursor:"pointer",fontSize:13}}>
                     {ar?"إلغاء":"Cancel"}
                   </button>
-                  <button onClick={saveEdit} style={{background:"#111",color:"#fff",border:"none",borderRadius:7,padding:"8px 20px",cursor:"pointer",fontSize:13,fontWeight:600}}>
+                  <button onClick={saveEdit} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:7,padding:"8px 20px",cursor:"pointer",fontSize:13,fontWeight:600}}>
                     ✓ {ar?"حفظ التعديل":"Save"}
                   </button>
                 </div>
@@ -2004,20 +2126,20 @@ function ResultsPage({ t, samples, setSamples }) {
                 {s.resultNote && (
                   <div style={{marginTop:12}}>
                     <div style={{fontSize:12,fontWeight:600,color:"#555",marginBottom:4}}>{ar?"الملاحظات":"Notes"}</div>
-                    <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#111",lineHeight:1.6}}>{s.resultNote}</div>
+                    <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#111",lineHeight:1.6}}>{s.resultNote}</div>
                   </div>
                 )}
                 {s.resultPdf && (
                   <div style={{marginTop:12}}>
-                    <div style={{fontSize:12,fontWeight:600,color:"#555",marginBottom:6}}>📎 {s.resultPdfName}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:"#555",marginBottom:6,display:"flex",alignItems:"center",gap:6}}><Icon name="paperclip" size={13} color="#5B6B67"/> {s.resultPdfName}</div>
                     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                       <a href={s.resultPdf} download={s.resultPdfName}
                         style={{background:"#fff",color:"#111",border:"1px solid #e5e5e5",borderRadius:7,padding:"7px 14px",fontSize:13,fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:6}}>
-                        ⬇ {ar?"تحميل":"Download"}
+                        <Icon name="download" size={15}/> {ar?"تحميل":"Download"}
                       </a>
                       <a href={s.resultPdf} target="_blank" rel="noreferrer"
                         style={{background:"#fafafa",color:"#555",border:"1px solid #e5e5e5",borderRadius:7,padding:"7px 14px",fontSize:13,fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:6}}>
-                        👁 {ar?"عرض":"View"}
+                        <Icon name="eye" size={15}/> {ar?"عرض":"View"}
                       </a>
                     </div>
                   </div>
@@ -2038,12 +2160,12 @@ function ResultsPage({ t, samples, setSamples }) {
   return (
     <div>
       <h2 style={{color:"#111",fontSize:mob?17:21,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px"}}>{t.nav.results}</h2>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 ..."
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={ar?"بحث...":"Search..."}
         style={{width:"100%",boxSizing:"border-box",...inp(),padding:"10px 14px",marginBottom:16}}/>
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16}}>
         <div style={{background:"#ffffff",border:"1px solid #e5e5e5",borderRadius:12,overflow:"hidden"}}>
-          <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0",background:"#fafafa",fontWeight:700,color:"#ef4444",fontSize:14}}>
-            ⏳ {ar?"في الانتظار":"Pending"} ({filtered(pending).length})
+          <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0",background:"#fafafa",fontWeight:700,color:SC.abroad,fontSize:14,display:"flex",alignItems:"center",gap:8}}>
+            <Icon name="clock" size={16} color={SC.abroad}/> {ar?"في الانتظار":"Pending"} ({filtered(pending).length})
           </div>
           <div style={{maxHeight:600,overflowY:"auto"}}>
             {filtered(pending).length===0
@@ -2053,8 +2175,8 @@ function ResultsPage({ t, samples, setSamples }) {
           </div>
         </div>
         <div style={{background:"#ffffff",border:"1px solid #e5e5e5",borderRadius:12,overflow:"hidden"}}>
-          <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0",background:"#fafafa",fontWeight:700,color:"#15803d",fontSize:14}}>
-            ✅ {ar?"نتائج وصلت":"Results In"} ({filtered(done).length})
+          <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0",background:"#fafafa",fontWeight:700,color:SC.done,fontSize:14,display:"flex",alignItems:"center",gap:8}}>
+            <Icon name="checkCircle" size={16} color={SC.done}/> {ar?"نتائج وصلت":"Results In"} ({filtered(done).length})
           </div>
           <div style={{maxHeight:600,overflowY:"auto"}}>
             {filtered(done).length===0
@@ -2245,32 +2367,32 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
     const labs = [...new Set(samps.map(s=>s.externalLab?.split("—")[0]?.trim()).filter(Boolean))];
     const overdue = samps.filter(s=>s.status==="overdue").length;
     return (
-      <div style={{background:"#ffffff",border:`1.5px solid ${isSelected?"#6366f1":"#e2e8f0"}`,borderRadius:12,overflow:"hidden",marginBottom:12,transition:"border-color .15s"}}>
+      <div style={{background:"#ffffff",border:`1.5px solid ${isSelected?"#0F6E56":"#e2e8f0"}`,borderRadius:12,overflow:"hidden",marginBottom:12,transition:"border-color .15s"}}>
         {/* Shipment header */}
-        <div style={{padding:"14px 16px",background:isSelected?"#eef2ff":"#f8fafc",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}
+        <div style={{padding:"14px 16px",background:isSelected?"#E1F5EE":"#F7FAF9",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}
           onClick={()=>setSelected(isSelected?null:shipNum)}>
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
-            <div style={{width:36,height:36,borderRadius:10,background:isSelected?"#6366f1":"#e2e8f0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
-              🚚
+            <div style={{width:36,height:36,borderRadius:10,background:isSelected?"#0F6E56":"#EDF1EF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Icon name="truck" size={19} color={isSelected?"#fff":"#5B6B67"}/>
             </div>
             <div style={{minWidth:0}}>
-              <div style={{fontWeight:700,fontSize:15,color:isSelected?"#4f46e5":"#000000",fontFamily:"monospace"}}>{shipNum}</div>
+              <div style={{fontWeight:700,fontSize:15,color:isSelected?"#4f46e5":"#000000",fontFamily:TOK.mono}}>{shipNum}</div>
               <div style={{fontSize:11,color:"#888",marginTop:1}}>{samps.length} {ar?"مريض":"patients"} · {labs.join(", ")}</div>
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-            {overdue>0 && <span style={{background:"#fafafa",color:"#be123c",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700}}>⚠{overdue}</span>}
+            {overdue>0 && <span style={{background:"#fafafa",color:"#be123c",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700,display:"inline-flex",alignItems:"center",gap:3}}><Icon name="alert" size={11} color="#be123c"/>{overdue}</span>}
             <span style={{background:"#f5f5f7",color:"#15803d",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600}}>{counts.done||0} ✓</span>
             <select value={shipStatuses[shipNum]||"sent"} onClick={e=>e.stopPropagation()} onChange={e=>{e.stopPropagation();saveShipStatus(shipNum,e.target.value);}}
-              style={{background:SC[shipStatuses[shipNum]||"sent"]||"#6366f1",color:"#fff",border:"none",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:600,cursor:"pointer",outline:"none",appearance:"none",WebkitAppearance:"none",paddingInlineEnd:18,backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='white'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"calc(100% - 5px) center"}}>
+              style={{background:SC[shipStatuses[shipNum]||"sent"]||"#0F6E56",color:"#fff",border:"none",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:600,cursor:"pointer",outline:"none",appearance:"none",WebkitAppearance:"none",paddingInlineEnd:18,backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='white'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"calc(100% - 5px) center"}}>
               <option value="sent" style={{background:"#fff",color:"#111"}}>{ar?"أُرسلت للخارج":"Sent Abroad"}</option>
               <option value="abroad" style={{background:"#fff",color:"#111"}}>{ar?"وصلت":"Arrived"}</option>
-              <option value="overdue" style={{background:"#fff",color:"#111"}}>{ar?"متأخرة ⚠":"Overdue ⚠"}</option>
+              <option value="overdue" style={{background:"#fff",color:"#111"}}>{ar?"متأخرة":"Overdue"}</option>
               <option value="done" style={{background:"#fff",color:"#111"}}>{ar?"نتيجة وصلت":"Results In"}</option>
             </select>
             <button onClick={e=>{e.stopPropagation();openEdit(shipNum);}}
               style={{background:"#f5f5f7",color:"#111",border:"1px solid #e5e5e5",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontSize:12,fontWeight:600}}>
-              ✏ {ar?"تعديل":"Edit"}
+              <Icon name="edit" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{ar?"تعديل":"Edit"}
             </button>
             <span style={{color:"#aaa",fontSize:14}}>{isSelected?"▲":"▼"}</span>
           </div>
@@ -2297,7 +2419,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                     <span>{s.sampleCode}</span>
                     <span>·</span>
                     <span>{s.testType}</span>
-                    {s.collectDate && <><span>·</span><span>📅 {s.collectDate}</span></>}
+                    {s.collectDate && <><span>·</span><span><Icon name="calendar" size={11} style={{verticalAlign:"-2px",marginInlineEnd:3}}/><span style={NUM}>{s.collectDate}</span></span></>}
                   </div>
                   <div style={{fontSize:11,color:"#aaa",marginTop:1}}>{s.externalLab}</div>
                 </div>
@@ -2333,7 +2455,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
           <div style={{background:"#fff",borderRadius:14,width:"100%",maxWidth:520,maxHeight:"85vh",boxShadow:"0 24px 60px rgba(0,0,0,0.15)",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
             <div style={{padding:"18px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <h3 style={{margin:0,fontSize:17,fontWeight:700,color:"#111"}}>✏ {ar?"تعديل الشحنة":"Edit Shipment"}: <span style={{color:"#111",fontFamily:"monospace"}}>{editModal}</span></h3>
+              <h3 style={{margin:0,fontSize:17,fontWeight:700,color:"#111",display:"flex",alignItems:"center",gap:8}}><Icon name="edit" size={17} color={TOK.primary}/> {ar?"تعديل الشحنة":"Edit Shipment"}: <span style={{color:"#111",fontFamily:TOK.mono}}>{editModal}</span></h3>
               <button onClick={()=>{setEditModal(null);setSelectedPatients([]);setPatientSearch("");}}
                 style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#aaa",lineHeight:1}}>×</button>
             </div>
@@ -2344,7 +2466,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                 {ar?"رقم الشحنة":"Shipment Number"}
               </label>
               <input value={editShipId} onChange={e=>setEditShipId(e.target.value)}
-                style={{...inp(),fontFamily:"monospace"}}/>
+                style={{...inp(),fontFamily:TOK.mono}}/>
             </div>
 
             {/* Patient search */}
@@ -2352,11 +2474,11 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <label style={{fontSize:13,fontWeight:600,color:"#555"}}>
                   {ar?"المرضى في هذه الشحنة":"Patients in this shipment"}
-                  <span style={{background:"#111",color:"#fff",borderRadius:12,padding:"1px 8px",fontSize:11,marginInlineStart:8}}>{selectedPatients.length}</span>
+                  <span style={{background:TOK.primary,color:"#fff",borderRadius:12,padding:"1px 8px",fontSize:11,marginInlineStart:8}}>{selectedPatients.length}</span>
                 </label>
               </div>
               <input value={patientSearch} onChange={e=>setPatientSearch(e.target.value)}
-                placeholder={ar?"🔍 ابحث باسم المريض...":"🔍 Search patient..."}
+                placeholder={ar?"ابحث باسم المريض...":"Search patient..."}
                 style={{...inp(),padding:"8px 12px",fontSize:13}}/>
             </div>
 
@@ -2370,12 +2492,12 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                     style={{display:"flex",alignItems:"center",gap:12,padding:"11px 20px",cursor:"pointer",background:checked?"#eef2ff":"#ffffff",borderBottom:"1px solid #f0f0f0",transition:"background .1s",opacity:inOther?0.5:1}}
                     onMouseEnter={e=>{if(!checked)e.currentTarget.style.background="#f8fafc"}}
                     onMouseLeave={e=>{if(!checked)e.currentTarget.style.background=checked?"#eef2ff":"#ffffff"}}>
-                    <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${checked?"#6366f1":"#d1d5db"}`,background:checked?"#6366f1":"#ffffff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
+                    <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${checked?"#0F6E56":"#d1d5db"}`,background:checked?"#0F6E56":"#ffffff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
                       {checked && <span style={{color:"#fff",fontSize:13,lineHeight:1}}>✓</span>}
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:600,color:"#111",fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
-                      <div style={{fontSize:11,color:"#888",marginTop:1}}>{s.sampleCode} · {s.testType}</div>
+                      <div style={{fontSize:11,color:"#888",marginTop:1}}><span style={{...NUM,color:TOK.ink2}}>{s.sampleCode}</span> · {s.testType}</div>
                     </div>
                     <div style={{flexShrink:0,textAlign:"end"}}>
                       <select value={s.status} onChange={async e=>{
@@ -2405,8 +2527,8 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
             {/* Footer */}
             <div style={{padding:"14px 20px",borderTop:"1px solid #f0f0f0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
               <button onClick={()=>deleteShipment(editModal)}
-                style={{background:"#fafafa",color:"#be123c",border:"1px solid #e5e5e5",borderRadius:9,padding:"10px 16px",cursor:"pointer",fontSize:13,fontWeight:600}}>
-                🗑 {ar?"حذف الشحنة":"Delete"}
+                style={{background:"#fafafa",color:"#be123c",border:"1px solid #e5e5e5",borderRadius:9,padding:"10px 16px",cursor:"pointer",fontSize:13,fontWeight:600,display:"inline-flex",alignItems:"center",gap:6}}>
+                <Icon name="trash" size={14} color="#be123c"/> {ar?"حذف الشحنة":"Delete"}
               </button>
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>{setEditModal(null);setSelectedPatients([]);setPatientSearch("");}}
@@ -2415,8 +2537,8 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                 </button>
                 <button onClick={saveEdit}
                   disabled={!editShipId.trim()}
-                  style={{background:editShipId.trim()?"#6366f1":"#a5b4fc",color:"#fff",border:"none",borderRadius:9,padding:"10px 22px",cursor:editShipId.trim()?"pointer":"default",fontSize:14,fontWeight:700}}>
-                  ✓ {ar?"حفظ التعديلات":"Save Changes"}
+                  style={{background:editShipId.trim()?"#0F6E56":"#A9BBB4",color:"#fff",border:"none",borderRadius:9,padding:"10px 22px",cursor:editShipId.trim()?"pointer":"default",fontSize:14,fontWeight:700,display:"inline-flex",alignItems:"center",gap:6}}>
+                  <Icon name="check" size={15} color="#fff"/> {ar?"حفظ التعديلات":"Save Changes"}
                 </button>
               </div>
             </div>
@@ -2431,7 +2553,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
 
             {/* Modal header */}
             <div style={{padding:"18px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <h3 style={{margin:0,fontSize:17,fontWeight:700,color:"#111"}}>🚚 {ar?"شحنة جديدة":"New Shipment"}</h3>
+              <h3 style={{margin:0,fontSize:17,fontWeight:700,color:"#111",display:"flex",alignItems:"center",gap:8}}><Icon name="truck" size={18} color={TOK.primary}/> {ar?"شحنة جديدة":"New Shipment"}</h3>
               <button onClick={()=>{setShowNewModal(false);setNewShipId("");setNewShipDate(new Date().toISOString().slice(0,10));setSelectedPatients([]);setPatientSearch("");}}
                 style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#aaa",lineHeight:1}}>×</button>
             </div>
@@ -2444,11 +2566,11 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                 </label>
                 <input value={newShipId} onChange={e=>setNewShipId(e.target.value)}
                   placeholder={ar?"مثال: SHP-2024-001":"e.g. SHP-2024-001"}
-                  style={{...inp(),fontFamily:"monospace"}}/>
+                  style={{...inp(),fontFamily:TOK.mono}}/>
               </div>
               <div>
                 <label style={{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:6}}>
-                  📅 {ar?"تاريخ الشحنة":"Shipment Date"}
+                  <Icon name="calendar" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{ar?"تاريخ الشحنة":"Shipment Date"}
                 </label>
                 <input type="date" value={newShipDate} onChange={e=>setNewShipDate(e.target.value)}
                   style={inp()}/>
@@ -2461,7 +2583,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                   style={{...inp(),cursor:"pointer"}}>
                   <option value="sent">{ar?"أُرسلت للخارج":"Sent Abroad"}</option>
                   <option value="abroad">{ar?"وصلت":"Arrived"}</option>
-                  <option value="overdue">{ar?"متأخرة ⚠":"Overdue ⚠"}</option>
+                  <option value="overdue">{ar?"متأخرة":"Overdue"}</option>
                 </select>
               </div>
             </div>
@@ -2471,7 +2593,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <label style={{fontSize:13,fontWeight:600,color:"#555"}}>
                   {ar?"اختر المرضى":"Select Patients"}
-                  {selectedPatients.length>0 && <span style={{background:"#111",color:"#fff",borderRadius:12,padding:"1px 8px",fontSize:11,marginInlineStart:8}}>{selectedPatients.length}</span>}
+                  {selectedPatients.length>0 && <span style={{background:TOK.primary,color:"#fff",borderRadius:12,padding:"1px 8px",fontSize:11,marginInlineStart:8}}>{selectedPatients.length}</span>}
                 </label>
                 {selectedPatients.length>0 && (
                   <button onClick={()=>setSelectedPatients([])} style={{background:"none",border:"none",color:"#aaa",cursor:"pointer",fontSize:12}}>
@@ -2480,7 +2602,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                 )}
               </div>
               <input value={patientSearch} onChange={e=>setPatientSearch(e.target.value)}
-                placeholder={ar?"🔍 ابحث باسم المريض أو الكود...":"🔍 Search patient or code..."}
+                placeholder={ar?"ابحث باسم المريض أو الكود...":"Search patient or code..."}
                 style={{...inp(),padding:"8px 12px",fontSize:13}}/>
             </div>
 
@@ -2497,13 +2619,13 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                     onMouseEnter={e=>{if(!checked)e.currentTarget.style.background="#f8fafc"}}
                     onMouseLeave={e=>{if(!checked)e.currentTarget.style.background="#ffffff"}}>
                     {/* Checkbox */}
-                    <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${checked?"#6366f1":"#d1d5db"}`,background:checked?"#6366f1":"#ffffff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
+                    <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${checked?"#0F6E56":"#d1d5db"}`,background:checked?"#0F6E56":"#ffffff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
                       {checked && <span style={{color:"#fff",fontSize:13,lineHeight:1}}>✓</span>}
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:600,color:"#111",fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
                       <div style={{fontSize:11,color:"#888",marginTop:1,display:"flex",gap:6}}>
-                        <span style={{fontFamily:"monospace"}}>{s.sampleCode}</span>
+                        <span style={{fontFamily:TOK.mono}}>{s.sampleCode}</span>
                         <span>·</span>
                         <span>{s.testType}</span>
                       </div>
@@ -2525,8 +2647,8 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
               </button>
               <button onClick={createShipment}
                 disabled={!newShipId.trim()||selectedPatients.length===0}
-                style={{background:(!newShipId.trim()||selectedPatients.length===0)?"#a5b4fc":"#6366f1",color:"#fff",border:"none",borderRadius:9,padding:"10px 24px",cursor:(!newShipId.trim()||selectedPatients.length===0)?"default":"pointer",fontSize:14,fontWeight:700}}>
-                🚚 {ar?`إنشاء الشحنة (${selectedPatients.length})`:`Create Shipment (${selectedPatients.length})`}
+                style={{background:(!newShipId.trim()||selectedPatients.length===0)?"#A9BBB4":"#0F6E56",color:"#fff",border:"none",borderRadius:9,padding:"10px 24px",cursor:(!newShipId.trim()||selectedPatients.length===0)?"default":"pointer",fontSize:14,fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
+                <Icon name="truck" size={16} color="#fff"/> {ar?`إنشاء الشحنة (${selectedPatients.length})`:`Create Shipment (${selectedPatients.length})`}
               </button>
             </div>
           </div>
@@ -2534,8 +2656,8 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
       )}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
-        <h2 style={{color:"#111",fontSize:mob?17:20,margin:0}}>
-          🚚 {t.nav.shipments} ({shipmentKeys.length})
+        <h2 style={{color:TOK.ink,fontSize:mob?18:22,margin:0,fontWeight:700,display:"flex",alignItems:"center",gap:9}}>
+          <Icon name="truck" size={20} color={TOK.primary}/> {t.nav.shipments} <span style={{...NUM,color:TOK.muted,fontWeight:500}}>({shipmentKeys.length})</span>
         </h2>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <div style={{background:"#f5f5f7",borderRadius:8,padding:"5px 12px",fontSize:13,color:"#111",fontWeight:600}}>
@@ -2547,8 +2669,8 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
             </div>
           )}
           <button onClick={()=>setShowNewModal(true)}
-            style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
-            + {ar?"شحنة جديدة":"New Shipment"}
+            style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",gap:7}}>
+            <Icon name="plus" size={16} color="#fff"/> {ar?"شحنة جديدة":"New Shipment"}
           </button>
         </div>
       </div>
@@ -2556,10 +2678,10 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
       {/* Search + Date Filter */}
       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
         <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder={ar?"🔍 ابحث برقم الشحنة أو اسم المريض...":"🔍 Search shipment or patient..."}
+          placeholder={ar?"ابحث برقم الشحنة أو اسم المريض...":"Search shipment or patient..."}
           style={{flex:1,minWidth:150,...inp(),padding:"10px 14px"}}/>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}>📅 {ar?"من":"From"}</span>
+          <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"من":"From"}</span>
           <input type="date" value={filterDateFrom} onChange={e=>setFilterDateFrom(e.target.value)}
             style={{...inp(),padding:"8px 10px",fontSize:13}}/>
         </div>
@@ -2577,7 +2699,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
       {/* Shipments list */}
       {shipmentKeys.length===0 && !search && (
         <div style={{textAlign:"center",padding:48,color:"#aaa"}}>
-          <div style={{fontSize:36,marginBottom:12}}>🚚</div>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><Icon name="truck" size={40} color="#C7D4CF" stroke={1.5}/></div>
           <div style={{fontSize:15,fontWeight:600,color:"#888",marginBottom:6}}>{ar?"لا توجد شحنات بعد":"No shipments yet"}</div>
           <div style={{fontSize:13}}>{ar?"أضف رقم الشحنة عند إدخال العينة":"Add a shipment number when creating a sample"}</div>
         </div>
@@ -2603,7 +2725,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
             <div key={s.id} style={{background:"#ffffff",border:"1px solid #f0f0f0",borderRadius:10,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
               <div style={{minWidth:0,flex:1}}>
                 <div style={{fontWeight:600,color:"#111",fontSize:13}}>{s.patientName}</div>
-                <div style={{fontSize:11,color:"#aaa",marginTop:1}}>{s.sampleCode} · {s.testType}</div>
+                <div style={{fontSize:11,color:"#aaa",marginTop:1}}><span style={{...NUM,color:TOK.muted}}>{s.sampleCode}</span> · {s.testType}</div>
               </div>
               {editingShipment===s.id ? (
                 <div style={{display:"flex",gap:6,flexShrink:0}}>
@@ -2612,13 +2734,13 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                     style={{...inp(),padding:"5px 10px",width:130,fontSize:12}}
                     onKeyDown={e=>e.key==="Enter"&&newShipNum.trim()&&updateSampleShipment(s.id,newShipNum)}/>
                   <button onClick={()=>newShipNum.trim()&&updateSampleShipment(s.id,newShipNum)}
-                    style={{background:"#111",color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>✓</button>
+                    style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>✓</button>
                   <button onClick={()=>{setEditingShipment(null);setNewShipNum("");}}
                     style={{background:"#fafafa",color:"#555",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>✕</button>
                 </div>
               ) : (
                 <button onClick={()=>{setEditingShipment(s.id);setNewShipNum("");}}
-                  style={{background:"#fafafa",color:"#888",border:"1px solid #e2e8f0",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,flexShrink:0,whiteSpace:"nowrap"}}>
+                  style={{background:"#fafafa",color:"#888",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,flexShrink:0,whiteSpace:"nowrap"}}>
                   + {ar?"أضف رقم شحنة":"Add shipment #"}
                 </button>
               )}
@@ -2658,9 +2780,9 @@ function AddTestPage({ t }) {
 
   return (
     <div style={{maxWidth:700,margin:"0 auto"}}>
-      <h2 style={{color:"#111",fontSize:mob?17:21,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px"}}>🔬 {t.nav.addTest}</h2>
+      <h2 style={{color:TOK.ink,fontSize:mob?18:22,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px",display:"flex",alignItems:"center",gap:9}}><Icon name="microscope" size={20} color={TOK.primary}/> {t.nav.addTest}</h2>
       {saved && <div style={{background:"#f5f5f7",border:"1px solid #e5e5e5",borderRadius:10,padding:"12px 16px",marginBottom:16,color:"#15803d",fontWeight:600}}>✓ {t.dir==="rtl"?"تم الحفظ":"Saved!"}</div>}
-      <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:14,padding:mob?16:24,marginBottom:20}}>
+      <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20}}>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"0 18px"}}>
           <Field label={t.dir==="rtl"?"اسم الفحص *":"Test Name *"}>
             <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder={t.dir==="rtl"?"مثال: Vitamin C":"e.g. Vitamin C"} style={inp()}/>
@@ -2676,14 +2798,14 @@ function AddTestPage({ t }) {
           </Field>
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",marginTop:16,paddingTop:16,borderTop:"1px solid #f0f0f0"}}>
-          <button onClick={save} style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"11px 28px",cursor:"pointer",fontSize:14,fontWeight:600}}>
+          <button onClick={save} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"11px 28px",cursor:"pointer",fontSize:14,fontWeight:600}}>
             + {t.nav.addTest}
           </button>
         </div>
       </div>
       {/* Tests saved - no list shown here, they appear in Test Type dropdown */}
       {saved && tests.length > 0 && (
-        <div style={{padding:"10px 14px",background:"#fafafa",border:"1px solid #ebebeb",borderRadius:8,fontSize:12,color:"#888",display:"flex",alignItems:"center",gap:8}}>
+        <div style={{padding:"10px 14px",background:"#fafafa",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,fontSize:12,color:"#888",display:"flex",alignItems:"center",gap:8}}>
           <span style={{color:"#22c55e"}}>✓</span>
           {t.dir==="rtl"?`تم إضافة "${tests[tests.length-1]?.name}" — ستظهر في قائمة نوع الفحص`:`"${tests[tests.length-1]?.name}" added — now available in Test Type dropdown`}
         </div>
@@ -2880,21 +3002,21 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
 
   return (
     <div>
-      <h2 style={{color:"#111",fontSize:mob?17:21,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px"}}>🧾 {t.nav.invoice}</h2>
+      <h2 style={{color:TOK.ink,fontSize:mob?18:22,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px",display:"flex",alignItems:"center",gap:9}}><Icon name="receipt" size={20} color={TOK.primary}/> {t.nav.invoice}</h2>
 
       {/* Filters */}
-      <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+      <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr 1fr",gap:12,alignItems:"end"}}>
           <div>
-            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>📅 {ar?"من":"From"}</label>
+            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"من":"From"}</label>
             <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{...inp(),padding:"9px 12px",fontSize:13}}/>
           </div>
           <div>
-            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>📅 {ar?"إلى":"To"}</label>
+            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"إلى":"To"}</label>
             <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{...inp(),padding:"9px 12px",fontSize:13}}/>
           </div>
           <div>
-            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>🌍 {ar?"البلد":"Country"}</label>
+            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}><Icon name="globe" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{ar?"البلد":"Country"}</label>
             <CustomSelect
               value={filterCountry}
               onChange={v=>{setFilterCountry(v);setClient("all");}}
@@ -2902,7 +3024,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
             />
           </div>
           <div>
-            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>👥 {ar?"العميل":"Client"}</label>
+            <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}><Icon name="users" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{ar?"العميل":"Client"}</label>
             <CustomSelect
               value={client}
               onChange={v=>setClient(v)}
@@ -2911,8 +3033,8 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
           </div>
         </div>
         <div style={{marginTop:12,display:"flex",gap:10,flexWrap:"wrap"}}>
-          {[[ar?"إجمالي العينات":"Samples",filtered.length,"#6366f1"],[ar?"عملاء":"Clients",Object.keys(byClient).length,"#10b981"],[ar?"الإيرادات":"Revenue",fmt(filtered.reduce((a,s)=>a+Number(s.salePrice||0),0))+" EGP","#8b5cf6"]].map(([l,v,c],i)=>(
-            <div key={i} style={{background:c+"11",border:"1px solid #ebebeb",borderRadius:8,padding:"8px 16px",flex:1,minWidth:90}}>
+          {[[ar?"إجمالي العينات":"Samples",filtered.length,"#0F6E56"],[ar?"عملاء":"Clients",Object.keys(byClient).length,"#0F8A5F"],[ar?"الإيرادات":"Revenue",fmt(filtered.reduce((a,s)=>a+Number(s.salePrice||0),0))+" EGP","#8b5cf6"]].map(([l,v,c],i)=>(
+            <div key={i} style={{background:c+"11",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,padding:"8px 16px",flex:1,minWidth:90}}>
               <div style={{fontWeight:700,color:c,fontSize:15}}>{v}</div>
               <div style={{fontSize:11,color:"#888",marginTop:1}}>{l}</div>
             </div>
@@ -2923,7 +3045,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
       {/* Per-client invoices */}
       {Object.keys(byClient).length===0 ? (
         <div style={{textAlign:"center",padding:48,color:"#aaa"}}>
-          <div style={{fontSize:36,marginBottom:12}}>🧾</div>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><Icon name="receipt" size={40} color="#C7D4CF" stroke={1.5}/></div>
           <div style={{fontSize:15,fontWeight:600,color:"#888"}}>{ar?"لا توجد بيانات في هذه الفترة":"No data found for this period"}</div>
         </div>
       ) : Object.entries(byClient).map(([name,items])=>{
@@ -2935,18 +3057,18 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
         const remaining = revenue - paid;
 
         return (
-          <div key={name} style={{background:"#fff",border:`1px solid ${isEditing?"#6366f1":"#e2e8f0"}`,borderRadius:16,marginBottom:20,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+          <div key={name} style={{background:"#fff",border:`1px solid ${isEditing?"#0F6E56":"#e2e8f0"}`,borderRadius:16,marginBottom:20,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
 
             {/* Invoice header */}
-            <div style={{background:"#111",padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+            <div style={{background:"linear-gradient(135deg,#0F6E56 0%,#0B5442 100%)",padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
               <div>
-                <div style={{color:"rgba(255,255,255,0.7)",fontSize:11,marginBottom:3}}>🧾 {ar?"فاتورة":"INVOICE"} · {dateFrom} → {dateTo}</div>
+                <div style={{color:"rgba(255,255,255,0.85)",fontSize:11,marginBottom:3,letterSpacing:"0.5px",display:"flex",alignItems:"center",gap:6}}><Icon name="receipt" size={13} color="rgba(255,255,255,0.85)"/> {ar?"فاتورة":"INVOICE"} · <span style={{...NUM}}>{dateFrom} → {dateTo}</span></div>
                 <div style={{color:"#fff",fontWeight:700,fontSize:18}}>{name}</div>
-                <div style={{color:"rgba(255,255,255,0.75)",fontSize:12,marginTop:2}}>{activeItems.length} {ar?"عينة":"samples"}</div>
+                <div style={{color:"rgba(255,255,255,0.8)",fontSize:12,marginTop:2}}><span style={{...NUM}}>{activeItems.length}</span> {ar?"عينة":"samples"}</div>
               </div>
               <div style={{textAlign:"end"}}>
-                <div style={{color:"rgba(255,255,255,0.7)",fontSize:11}}>{ar?"الإجمالي":"Total"}</div>
-                <div style={{color:"#fff",fontWeight:700,fontSize:22}}>{fmt(revenue)} EGP</div>
+                <div style={{color:"rgba(255,255,255,0.75)",fontSize:11}}>{ar?"الإجمالي":"Total"}</div>
+                <div style={{...NUM,color:"#fff",fontWeight:700,fontSize:22}}>{fmt(revenue)} EGP</div>
                 <div style={{color:remaining>0?"#fca5a5":"#86efac",fontSize:12,marginTop:2}}>
                   {remaining>0?`${ar?"متبقي":"Remaining"}: ${fmt(remaining)} EGP`:`✓ ${ar?"مدفوع بالكامل":"Fully Paid"}`}
                 </div>
@@ -2956,17 +3078,17 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
             {/* Action bar */}
             <div style={{background:"#fafafa",borderBottom:"1px solid #f0f0f0",padding:"10px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
               <div style={{fontSize:12,color:"#888"}}>
-                {isEditing?(ar?"✏ اختر العينات وعدّل الأسعار وحالة الدفع":"✏ Toggle items & edit prices/payment"):(ar?"اضغط تعديل لتخصيص الفاتورة":"Click Edit to customize")}
+                {isEditing?(ar?"اختر العينات وعدّل الأسعار وحالة الدفع":"Toggle items & edit prices/payment"):(ar?"اضغط تعديل لتخصيص الفاتورة":"Click Edit to customize")}
               </div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {isEditing ? <>
                   <button onClick={()=>{setEditClient(null);setEditItems(null);}} style={{background:"#fafafa",color:"#555",border:"none",borderRadius:7,padding:"6px 14px",cursor:"pointer",fontSize:12}}>{ar?"إلغاء":"Cancel"}</button>
-                  <button onClick={saveEdit} style={{background:"#10b981",color:"#fff",border:"none",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:700}}>✓ {ar?"حفظ":"Save"}</button>
+                  <button onClick={saveEdit} style={{background:"#0F8A5F",color:"#fff",border:"none",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:700}}>✓ {ar?"حفظ":"Save"}</button>
                 </> : (
-                  <button onClick={()=>openEdit(name)} style={{background:"#f5f5f7",color:"#111",border:"1px solid #e5e5e5",borderRadius:7,padding:"6px 14px",cursor:"pointer",fontSize:12,fontWeight:600}}>✏ {ar?"تعديل":"Edit"}</button>
+                  <button onClick={()=>openEdit(name)} style={{background:"#f5f5f7",color:"#111",border:"1px solid #e5e5e5",borderRadius:7,padding:"6px 14px",cursor:"pointer",fontSize:12,fontWeight:600}}><Icon name="edit" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{ar?"تعديل":"Edit"}</button>
                 )}
-                <button onClick={()=>printInvoice(name,activeItems)} style={{background:"#111",color:"#fff",border:"none",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:600}}>🖨 {ar?"طباعة PDF":"Print / PDF"}</button>
-                <button onClick={()=>exportInvoiceExcel(name,activeItems)} style={{background:"#f5f5f7",color:"#15803d",border:"1px solid #e5e5e5",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:600}}>📊 Excel</button>
+                <button onClick={()=>printInvoice(name,activeItems)} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:600,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="printer" size={14} color="#fff"/> {ar?"طباعة PDF":"Print / PDF"}</button>
+                <button onClick={()=>exportInvoiceExcel(name,activeItems)} style={{background:"#f5f5f7",color:"#0F6E56",border:"1px solid #e5e5e5",borderRadius:7,padding:"6px 16px",cursor:"pointer",fontSize:12,fontWeight:600,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="sheet" size={14}/> Excel</button>
               </div>
             </div>
 
@@ -2991,7 +3113,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
                       <tr key={s.id} style={{borderTop:"1px solid #f0f0f0",opacity:excluded?0.3:1,background:i%2===0?"#fff":"#fafafa",transition:"opacity .2s"}}>
                         {isEditing && (
                           <td style={{padding:"9px 10px",textAlign:"center"}}>
-                            <button onClick={()=>toggleItem(s.id)} style={{width:22,height:22,borderRadius:6,border:`2px solid ${s._include?"#6366f1":"#d1d5db"}`,background:s._include?"#6366f1":"#fff",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,padding:0}}>
+                            <button onClick={()=>toggleItem(s.id)} style={{width:22,height:22,borderRadius:6,border:`2px solid ${s._include?"#0F6E56":"#d1d5db"}`,background:s._include?"#0F6E56":"#fff",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,padding:0}}>
                               {s._include?"✓":""}
                             </button>
                           </td>
@@ -2999,7 +3121,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
                         <td style={{padding:"9px 12px",color:"#aaa",fontSize:12}}>{i+1}</td>
                         <td style={{padding:"9px 12px"}}>
                           <div style={{fontWeight:600,color:"#000",fontSize:13}}>{s.patientName}</div>
-                          <div style={{fontSize:10,color:"#aaa",fontFamily:"monospace"}}>{s.sampleCode}</div>
+                          <div style={{fontSize:10,color:"#aaa",fontFamily:TOK.mono}}>{s.sampleCode}</div>
                         </td>
                         <td style={{padding:"9px 12px",color:"#555",fontSize:12,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.testType}</td>
                         <td style={{padding:"9px 12px",color:"#888",fontSize:12}}>{s.collectDate||s.sentDate||"—"}</td>
@@ -3007,8 +3129,8 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
                           <td style={{padding:"9px 12px",textAlign:"end"}}>
                             {isEditing ? (
                               <input type="number" value={s.salePrice||""} onChange={e=>updateField(s.id,"salePrice",e.target.value)}
-                                style={{width:88,background:"#fff",border:"1px solid #ebebeb",borderRadius:6,padding:"4px 8px",fontSize:12,textAlign:"end",color:"#000"}}/>
-                            ) : <span style={{fontWeight:600,color:"#6366f1"}}>{fmt(s.salePrice)} EGP</span>}
+                                style={{width:88,background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:6,padding:"4px 8px",fontSize:12,textAlign:"end",color:"#000"}}/>
+                            ) : <span style={{fontWeight:600,color:"#0F6E56"}}>{fmt(s.salePrice)} EGP</span>}
                           </td>
                         )}
                         <td style={{padding:"9px 12px",textAlign:"center"}}>
@@ -3032,9 +3154,9 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
                       {ar?"الإجمالي":"Total"} ({activeItems.length} {ar?"عينة":"items"})
                     </td>
                     <td/>
-                    {isAdmin && <td style={{padding:"10px 12px",textAlign:"end",fontWeight:700,color:"#6366f1",fontSize:15}}>{fmt(revenue)} EGP</td>}
+                    {isAdmin && <td style={{padding:"10px 12px",textAlign:"end",fontWeight:700,color:"#0F6E56",fontSize:15}}>{fmt(revenue)} EGP</td>}
                     <td style={{padding:"10px 12px",textAlign:"center"}}>
-                      <span style={{color:"#10b981",fontWeight:700,fontSize:12}}>{fmt(paid)} ✓</span>
+                      <span style={{color:"#0F8A5F",fontWeight:700,fontSize:12}}>{fmt(paid)} ✓</span>
                       {remaining>0 && <span style={{color:"#ef4444",fontWeight:700,fontSize:12,marginInlineStart:8}}>{fmt(remaining)} ↓</span>}
                     </td>
                   </tr>
@@ -3092,7 +3214,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
 
   const saveEmail = () => {
     saveToCloud("email_settings", emailForm);
-    setEmailMsg({text: ar?"✓ تم حفظ إعدادات البريد الإلكتروني":"✓ Email settings saved", type:"success"});
+    setEmailMsg({text: ar?"تم حفظ إعدادات البريد الإلكتروني":"Email settings saved", type:"success"});
     setTimeout(()=>setEmailMsg({text:"",type:""}), 3000);
   };
 
@@ -3194,8 +3316,8 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
 
       {/* Supabase status - admin only */}
       {isAdmin && (
-        <div style={{marginBottom:20,padding:"10px 14px",background:"#fafafa",border:"1px solid #ebebeb",borderRadius:8,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:supaStatus==="connected"?"#22c55e":supaStatus==="empty"?"#f59e0b":supaStatus==="checking"?"#d1d5db":"#ef4444"}}/>
+        <div style={{marginBottom:20,padding:"10px 14px",background:"#fafafa",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:supaStatus==="connected"?"#22c55e":supaStatus==="empty"?"#B26B00":supaStatus==="checking"?"#d1d5db":"#ef4444"}}/>
           <span style={{color:"#555"}}>
             Supabase: {supaStatus==="connected"?(ar?"متصل ✓":"Connected ✓"):supaStatus==="empty"?(ar?"متصل — لا يوجد بيانات محفوظة بعد":"Connected — no users saved yet"):supaStatus==="checking"?(ar?"جاري الفحص...":"Checking..."):supaStatus}
           </span>
@@ -3204,8 +3326,8 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
             setSupaStatus("connected");
             showMsg(ar?"✓ تم حفظ المستخدمين في السحابة":"✓ Users saved to cloud");
           }}
-            style={{background:"#111",color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600,marginInlineStart:"auto"}}>
-            {ar?"حفظ في السحابة ☁":"Sync to Cloud ☁"}
+            style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600,marginInlineStart:"auto",display:"inline-flex",alignItems:"center",gap:5}}>
+            <Icon name="cloud" size={13} color="#fff"/> {ar?"حفظ في السحابة":"Sync to Cloud"}
           </button>
         </div>
       )}
@@ -3226,7 +3348,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
         <div style={{fontSize:12,color:"#aaa"}}>{isAdmin?users.length:1} {ar?"حسابات":"accounts"}</div>
       </div>
 
-      <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
+      <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
         {(isAdmin ? users : users.filter(u=>u.username===currentUser.username)).map((u,idx) => {
           const isEditing = editingUser === u.username;
           const isSelf = currentUser.username === u.username;
@@ -3246,8 +3368,8 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
                   <div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontWeight:700,color:"#111",fontSize:14}}>{u.username}</span>
-                      {isSelf && <span style={{background:"#111",color:"#fff",borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:600,letterSpacing:"0.3px"}}>{ar?"أنت":"YOU"}</span>}
-                      <span style={{background:"#f5f5f7",color:"#888",borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:500,letterSpacing:"0.2px",border:"1px solid #ebebeb"}}>
+                      {isSelf && <span style={{background:TOK.primary,color:"#fff",borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:600,letterSpacing:"0.3px"}}>{ar?"أنت":"YOU"}</span>}
+                      <span style={{background:"#f5f5f7",color:"#888",borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:500,letterSpacing:"0.2px",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)"}}>
                         {u.role==="admin"?(ar?"مدير":"ADMIN"):(ar?"مستخدم":"USER")}
                       </span>
                     </div>
@@ -3343,7 +3465,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
                     <button onClick={()=>setEditingUser(null)} style={{background:"transparent",color:"#888",border:"1px solid #e5e5e5",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13}}>
                       {ar?"إلغاء":"Cancel"}
                     </button>
-                    <button onClick={handleSave} style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 22px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 2px 6px rgba(0,0,0,0.15)"}}>
+                    <button onClick={handleSave} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"9px 22px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 2px 6px rgba(0,0,0,0.15)"}}>
                       {ar?"حفظ التغييرات":"Save Changes"}
                     </button>
                   </div>
@@ -3362,7 +3484,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
       {/* ── Logout ── */}
       <div style={{marginTop:32}}>
         <div style={{fontSize:11,fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:12}}>{ar?"الحساب":"ACCOUNT"}</div>
-        <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
+        <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
           <div style={{padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <div style={{width:42,height:42,borderRadius:"50%",background:"#f5f5f7",border:"1px solid #e5e5e5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
@@ -3388,111 +3510,103 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
         </div>
       </div>
 
-      {/* ── Email Settings ── */}
-      <div style={{marginTop:20,background:"#fff",border:"1px solid #ebebeb",borderRadius:12,overflow:"hidden"}}>
+      {/* ── Email ── */}
+      <div style={{marginTop:20,background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,overflow:"hidden"}}>
         <div onClick={()=>setEmailSection(e=>!e)}
-          style={{padding:"14px 18px",borderBottom:emailSection?"1px solid #f1f5f9":"none",fontWeight:700,color:"#111",fontSize:15,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",userSelect:"none"}}>
-          <span>📧 {ar?"إعدادات البريد الإلكتروني":"Email Settings"}</span>
-          <span style={{color:"#aaa",fontSize:14}}>{emailSection?"▲":"▼"}</span>
+          style={{padding:"14px 18px",borderBottom:emailSection?"1px solid #EEF3F1":"none",fontWeight:700,color:TOK.ink,fontSize:15,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",userSelect:"none"}}>
+          <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="mail" size={17} color={TOK.primary}/> {ar?"البريد الإلكتروني":"Email"}</span>
+          <Icon name={emailSection?"chevronUp":"chevronDown"} size={16} color={TOK.muted}/>
         </div>
 
         {emailSection && (
           <div style={{padding:"18px"}}>
             {emailMsg.text && (
-              <div style={{background:"#fff",border:`1px solid ${emailMsg.type==="error"?"#ef4444":"#111"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:emailMsg.type==="error"?"#ef4444":"#111",fontWeight:600,fontSize:13}}>
-                {emailMsg.text}
+              <div style={{background:emailMsg.type==="error"?"#FCEBEB":"#E1F5EE",border:`1px solid ${emailMsg.type==="error"?"#F3D3D3":"#C4E9DF"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:emailMsg.type==="error"?"#A32D2D":"#0F6E56",fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:8}}>
+                <Icon name={emailMsg.type==="error"?"alert":"checkCircle"} size={15} color={emailMsg.type==="error"?"#C7362F":"#0F8A5F"}/> {emailMsg.text}
               </div>
             )}
 
+            <div style={{background:"#F7FAF9",border:`1px solid ${TOK.line}`,borderRadius:10,padding:"11px 13px",marginBottom:16,fontSize:12.5,color:TOK.ink2,lineHeight:1.5,display:"flex",gap:9}}>
+              <Icon name="mail" size={16} color={TOK.primary} style={{marginTop:1}}/>
+              <span>{ar?"يفتح البريد في تطبيق البريد على جهازك، مع تعبئة المستلم والموضوع والنص تلقائياً. البيانات أدناه تُستخدم كتوقيع المرسل.":"Emails open in your device's mail app with the recipient, subject, and body pre-filled. The details below are used as the sender signature."}</span>
+            </div>
+
             <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"0 16px"}}>
 
-              {/* Sender name */}
               <div style={{marginBottom:14,gridColumn:"1/-1"}}>
                 <label style={{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
-                  {ar?"اسم المرسل":"Sender Name"}
+                  {ar?"اسم المرسل / المعمل":"Sender / Lab Name"}
                 </label>
                 <input value={emailForm.senderName||""} onChange={e=>setEmailForm(f=>({...f,senderName:e.target.value}))}
-                  placeholder="Involve Out Lab System"
+                  placeholder="Harmony Medical Group"
                   style={inp()}/>
               </div>
 
-              {/* Email address */}
               <div style={{marginBottom:14}}>
-                <label style={{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
-                  {ar?"البريد الإلكتروني":"Email Address"}
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
+                  <Icon name="mail" size={13} color="#5B6B67"/> {ar?"البريد الإلكتروني":"From Email"}
                 </label>
                 <input type="email" value={emailForm.email||""} onChange={e=>setEmailForm(f=>({...f,email:e.target.value}))}
-                  placeholder="lab@involvout.com"
+                  placeholder="lab@harmonymedical.com"
                   style={inp()}/>
               </div>
 
-              {/* Reply-to */}
               <div style={{marginBottom:14}}>
                 <label style={{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
                   {ar?"الرد على":"Reply-To"}
                 </label>
                 <input type="email" value={emailForm.replyTo||""} onChange={e=>setEmailForm(f=>({...f,replyTo:e.target.value}))}
-                  placeholder="support@involvout.com"
+                  placeholder="support@harmonymedical.com"
                   style={inp()}/>
               </div>
 
-              {/* Phone */}
               <div style={{marginBottom:14}}>
-                <label style={{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
-                  📱 {ar?"رقم الهاتف (للفواتير)":"Phone (for invoices)"}
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
+                  <Icon name="phone" size={13} color="#5B6B67"/> {ar?"رقم الهاتف":"Phone"}
                 </label>
                 <input type="tel" value={emailForm.phone||""} onChange={e=>setEmailForm(f=>({...f,phone:e.target.value}))}
                   placeholder="+20 10 xxxx xxxx"
                   style={inp()}/>
               </div>
 
-              {/* WhatsApp */}
               <div style={{marginBottom:14}}>
-                <label style={{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
-                  💬 {ar?"واتساب":"WhatsApp"}
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
+                  <Icon name="whatsapp" size={13} color="#5B6B67"/> {ar?"واتساب":"WhatsApp"}
                 </label>
                 <input type="tel" value={emailForm.whatsapp||""} onChange={e=>setEmailForm(f=>({...f,whatsapp:e.target.value}))}
                   placeholder="+20 10 xxxx xxxx"
                   style={inp()}/>
               </div>
 
-              {/* Address */}
               <div style={{marginBottom:14,gridColumn:"1/-1"}}>
-                <label style={{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
-                  📍 {ar?"العنوان (للفواتير)":"Address (for invoices)"}
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:600,color:"#555",marginBottom:5}}>
+                  <Icon name="mapPin" size={13} color="#5B6B67"/> {ar?"العنوان":"Address"}
                 </label>
                 <input value={emailForm.address||""} onChange={e=>setEmailForm(f=>({...f,address:e.target.value}))}
                   placeholder={ar?"القاهرة، مصر":"Cairo, Egypt"}
                   style={inp()}/>
               </div>
+            </div>
 
-              {/* Notification toggles */}
-              <div style={{gridColumn:"1/-1",marginBottom:14}}>
-                <label style={{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:10}}>
-                  🔔 {ar?"تنبيهات البريد الإلكتروني":"Email Notifications"}
-                </label>
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  {[
-                    ["notifyOverdue",   ar?"تنبيه عند تجاوز TAT":"Notify when TAT exceeded"],
-                    ["notifyDone",      ar?"تنبيه عند وصول النتيجة":"Notify when result arrives"],
-                    ["notifyNewSample", ar?"تنبيه عند إضافة عينة جديدة":"Notify when new sample added"],
-                  ].map(([key, label])=>(
-                    <label key={key} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",userSelect:"none"}}>
-                      <div onClick={()=>setEmailForm(f=>({...f,[key]:!f[key]}))}
-                        style={{width:42,height:24,borderRadius:12,background:emailForm[key]?"#6366f1":"#e2e8f0",position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
-                        <div style={{width:18,height:18,borderRadius:9,background:"#fff",position:"absolute",top:3,insetInlineStart:emailForm[key]?"21px":"3px",transition:"inset-inline-start .2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
-                      </div>
-                      <span style={{fontSize:13,color:"#555"}}>{label}</span>
-                    </label>
-                  ))}
-                </div>
+            {/* Signature preview */}
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:11,fontWeight:600,color:TOK.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:6}}>{ar?"معاينة التوقيع":"Signature preview"}</label>
+              <div style={{background:"#F7FAF9",border:`1px solid ${TOK.line}`,borderRadius:10,padding:"12px 14px",fontFamily:TOK.mono,fontSize:12.5,color:TOK.ink2,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:44}}>
+                {[emailForm.senderName, emailForm.email, emailForm.phone&&("Tel: "+emailForm.phone), emailForm.whatsapp&&("WhatsApp: "+emailForm.whatsapp), emailForm.address].filter(Boolean).join("\n") || (ar?"— أضف بياناتك بالأعلى —":"— fill in your details above —")}
               </div>
             </div>
 
-            <div style={{display:"flex",justifyContent:"flex-end",paddingTop:8,borderTop:"1px solid #f0f0f0"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",paddingTop:14,borderTop:"1px solid #EEF3F1"}}>
+              <button onClick={()=>{
+                if(!emailForm.email){ setEmailMsg({text: ar?"أدخل البريد الإلكتروني أولاً":"Enter a From email first", type:"error"}); setTimeout(()=>setEmailMsg({text:"",type:""}),3000); return; }
+                composeEmail({ to: emailForm.email, subject: (emailForm.senderName||"Harmony Medical Group")+" — "+(ar?"بريد تجريبي":"Test email"), body: (ar?"هذا بريد تجريبي من نظام هارموني الطبي. إذا وصلك، فإن إنشاء البريد يعمل.":"This is a test email from the Harmony system. If you received it, email composing works.") });
+              }}
+                style={{background:"#fff",color:TOK.primary,border:`1px solid ${TOK.primary}`,borderRadius:8,padding:"9px 16px",cursor:"pointer",fontSize:13,fontWeight:600,display:"inline-flex",alignItems:"center",gap:7}}>
+                <Icon name="send" size={14} color={TOK.primary}/> {ar?"إرسال بريد تجريبي":"Send test email"}
+              </button>
               <button onClick={saveEmail}
-                style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",cursor:"pointer",fontSize:14,fontWeight:700}}>
-                ✓ {ar?"حفظ الإعدادات":"Save Settings"}
+                style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",cursor:"pointer",fontSize:14,fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
+                <Icon name="check" size={15} color="#fff"/> {ar?"حفظ الإعدادات":"Save Settings"}
               </button>
             </div>
           </div>
@@ -3555,16 +3669,15 @@ function LoginPage({ onLogin, lang, setLang, onSignUp, onForgot }) {
 
   return (
     <div dir={ar?"rtl":"ltr"} style={{
-      fontFamily: ar?"'Cairo','Segoe UI',sans-serif":"'Inter','Segoe UI',sans-serif",
-      minHeight:"100vh", background:"linear-gradient(135deg,#2d2d2d 0%,#111111 100%)",
+      fontFamily: TOK.sans,
+      minHeight:"100vh", background:"radial-gradient(1200px 600px at 50% -10%, #12836A 0%, transparent 60%), linear-gradient(165deg, #0B5442 0%, #08302A 100%)",
       display:"flex", alignItems:"center", justifyContent:"center", padding:20
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 
       {/* Lang toggle */}
       <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")}
         style={{position:"fixed",top:16,insetInlineEnd:16,background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13,backdropFilter:"blur(4px)"}}>
-        🌐 {ar?"English":"عربي"}
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon name="globe" size={14}/> {ar?"English":"عربي"}</span>
       </button>
 
       <div style={{width:"100%",maxWidth:420}}>
@@ -3583,7 +3696,7 @@ function LoginPage({ onLogin, lang, setLang, onSignUp, onForgot }) {
 
           {error && (
             <div style={{background:"#fafafa",border:"1px solid #e5e5e5",borderRadius:10,padding:"10px 14px",marginBottom:16,color:"#be123c",fontSize:13,fontWeight:500}}>
-              ⚠ {error}
+              <Icon name="alert" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{error}
             </div>
           )}
 
@@ -3597,7 +3710,7 @@ function LoginPage({ onLogin, lang, setLang, onSignUp, onForgot }) {
               onKeyDown={handleKey}
               placeholder={ar?"أدخل اسم المستخدم":"Enter username"}
               style={{width:"100%",boxSizing:"border-box",background:"#fafafa",border:"1.5px solid #e5e7eb",borderRadius:10,padding:"12px 14px",color:"#111",fontSize:15,outline:"none"}}
-              onFocus={e=>e.target.style.borderColor="#6366f1"}
+              onFocus={e=>e.target.style.borderColor=TOK.primary}
               onBlur={e=>e.target.style.borderColor="#e5e7eb"}
             />
           </div>
@@ -3614,18 +3727,18 @@ function LoginPage({ onLogin, lang, setLang, onSignUp, onForgot }) {
                 onKeyDown={handleKey}
                 placeholder={ar?"أدخل كلمة المرور":"Enter password"}
                 style={{width:"100%",boxSizing:"border-box",background:"#fafafa",border:"1.5px solid #e5e7eb",borderRadius:10,padding:"12px 44px 12px 14px",color:"#111",fontSize:15,outline:"none"}}
-                onFocus={e=>e.target.style.borderColor="#6366f1"}
+                onFocus={e=>e.target.style.borderColor="#0F6E56"}
                 onBlur={e=>e.target.style.borderColor="#e5e7eb"}
               />
               <button onClick={()=>setShowPass(s=>!s)}
                 style={{position:"absolute",insetInlineEnd:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#aaa",padding:0}}>
-                {showPass?"🙈":"👁"}
+                <Icon name={showPass?"eyeOff":"eye"} size={17} color="#9ca3af"/>
               </button>
             </div>
           </div>
 
           <button onClick={handleLogin} disabled={loading}
-            style={{width:"100%",background:loading?"#555":"#111",color:"#fff",border:"none",borderRadius:12,padding:"14px",cursor:loading?"default":"pointer",fontSize:16,fontWeight:700,transition:"all .2s",boxShadow:"0 4px 15px rgba(0,0,0,0.3)"}}>
+            style={{width:"100%",background:loading?"#6B8A82":TOK.primary,color:"#fff",border:"none",borderRadius:12,padding:"14px",cursor:loading?"default":"pointer",fontSize:16,fontWeight:600,transition:"all .2s",boxShadow:"0 6px 18px rgba(15,110,86,0.35)"}}>
             {loading?(ar?"جاري الدخول...":"Signing in..."):(ar?"دخول":"Sign In")}
           </button>
 
@@ -3806,8 +3919,8 @@ function TestsPage({ t, isAdmin }) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <h2 style={{color:"#111",fontSize:mob?17:21,fontWeight:700,margin:0,letterSpacing:"-0.4px"}}>
-            {ar ? "🔬 الفحوصات" : "🔬 Tests"}
+          <h2 style={{color:TOK.ink,fontSize:mob?18:22,fontWeight:700,margin:0,letterSpacing:"-0.4px",display:"flex",alignItems:"center",gap:9}}>
+            <Icon name="microscope" size={20} color={TOK.primary}/> {ar ? "الفحوصات" : "Tests"}
           </h2>
           <p style={{color:"#aaa",fontSize:12,margin:"3px 0 0"}}>
             {loadingTests ? (ar?"جاري التحميل...":"Loading...") : `${allTestsList.length} ${ar?"فحص":"tests"} (${filtered.length} ${ar?"ظاهر":"shown"})`}
@@ -3821,8 +3934,8 @@ function TestsPage({ t, isAdmin }) {
               setExtraTests(v);
               setLoadingTests(false);
               alert(`Loaded ${v.length} extra tests from Supabase`);
-            }} style={{background:"#f5f5f7",color:"#555",border:"1px solid #e5e5e5",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:12}}>
-              🔄 {ar?"تحديث":"Reload"}
+            }} style={{background:"#f5f5f7",color:"#555",border:"1px solid #e5e5e5",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:12,display:"inline-flex",alignItems:"center",gap:6}}>
+              <Icon name="refresh" size={13}/> {ar?"تحديث":"Reload"}
             </button>
           )}
           {isAdmin && extraTests.length === 0 && !loadingTests && (
@@ -3844,8 +3957,8 @@ function TestsPage({ t, isAdmin }) {
                 setLoadingTests(false);
               } catch(e){ console.error(e); setLoadingTests(false); alert("Error: "+e.message); }
             }}
-              style={{background:"#f59e0b",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600}}>
-              ☁ {ar?"تحميل فحوصات India & Greece":"Upload India & Greece Tests"}
+              style={{background:"#B26B00",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600,display:"inline-flex",alignItems:"center",gap:7}}>
+              <Icon name="cloud" size={15} color="#fff"/> {ar?"تحميل فحوصات India & Greece":"Upload India & Greece Tests"}
             </button>
           )}
           {isAdmin && (
@@ -3858,7 +3971,7 @@ function TestsPage({ t, isAdmin }) {
       </div>
 
       {showAdd && isAdmin && (
-        <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:14,padding:mob?16:24,marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+        <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
           <div style={{fontSize:11,fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:16}}>
             {ar?"فحص جديد":"NEW TEST"}
           </div>
@@ -3899,7 +4012,7 @@ function TestsPage({ t, isAdmin }) {
             <button onClick={()=>setShowAdd(false)} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#888",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13}}>
               {ar?"إلغاء":"Cancel"}
             </button>
-            <button onClick={saveNew} style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 24px",cursor:"pointer",fontSize:13,fontWeight:600}}>
+            <button onClick={saveNew} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"9px 24px",cursor:"pointer",fontSize:13,fontWeight:600}}>
               + {ar?"إضافة":"Add"}
             </button>
           </div>
@@ -3907,15 +4020,15 @@ function TestsPage({ t, isAdmin }) {
       )}
 
       {/* Currency Converter Bar */}
-      <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+      <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
         <span style={{fontSize:12,fontWeight:600,color:"#555",flexShrink:0}}>{ar?"عرض الأسعار بـ":"Show prices in"}</span>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",flex:1}}>
           {currencies.map(c=>(
             <button key={c} onClick={()=>setDisplayCurrency(c)}
               style={{
                 padding:"5px 12px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:500,
-                border:`1.5px solid ${displayCurrency===c?"#111":"#e5e5e5"}`,
-                background:displayCurrency===c?"#111":"#fff",
+                border:`1.5px solid ${displayCurrency===c?TOK.primary:"#e5e5e5"}`,
+                background:displayCurrency===c?TOK.primary:"#fff",
                 color:displayCurrency===c?"#fff":"#555",
                 transition:"all .15s",
               }}>
@@ -3925,7 +4038,7 @@ function TestsPage({ t, isAdmin }) {
         </div>
         <button onClick={fetchRates} disabled={ratesLoading}
           style={{background:"#fafafa",border:"1px solid #e5e5e5",color:"#555",borderRadius:8,padding:"5px 12px",cursor:"pointer",fontSize:11,flexShrink:0}}>
-          {ratesLoading?"⟳...":(ar?"تحديث الأسعار":"Refresh Rates")}
+          {ratesLoading?(ar?"جارٍ...":"Loading..."):(<><Icon name="refresh" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{ar?"تحديث الأسعار":"Refresh Rates"}</>)}
         </button>
         {ratesUpdated && <span style={{fontSize:10,color:"#aaa",flexShrink:0}}>{ar?"آخر تحديث:":"Updated:"} {ratesUpdated}</span>}
         {displayCurrency!=="original" && (
@@ -3937,7 +4050,7 @@ function TestsPage({ t, isAdmin }) {
 
       <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
         <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}
-          placeholder={ar?"🔍 ابحث باسم الفحص أو المعمل...":"🔍 Search by test name or lab..."}
+          placeholder={ar?"ابحث باسم الفحص أو المعمل...":"Search by test name or lab..."}
           style={{flex:1,minWidth:150,...inp(),padding:"9px 14px"}}/>
         <CustomSelect value={filterLab} onChange={v=>{setFilterLab(v);setPage(1);}}
           options={labsList.map(l=>({value:l,label:l==="all"?(ar?"كل المعامل":"All Labs"):l}))}
@@ -3955,7 +4068,7 @@ function TestsPage({ t, isAdmin }) {
             const dispPrice = displayCurrency==="original" ? effPrice : convertPrice(effPrice, test.currency);
             const dispCurrency = displayCurrency==="original" ? (test.currency||"USD") : displayCurrency;
             return (
-              <div key={i} style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:10,padding:"12px 14px"}}>
+              <div key={i} style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:10,padding:"12px 14px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:600,color:"#111",fontSize:13,lineHeight:1.4}}>{test.name}</div>
@@ -3967,16 +4080,16 @@ function TestsPage({ t, isAdmin }) {
                         <input type="number" value={editVal} onChange={e=>setEditVal(e.target.value)}
                           autoFocus onKeyDown={e=>{if(e.key==="Enter")savePriceOverride(test.name,editVal);if(e.key==="Escape")setEditingPrice(null);}}
                           style={{width:70,border:"1.5px solid #111",borderRadius:5,padding:"3px 6px",fontSize:12,textAlign:"end"}}/>
-                        <button onClick={()=>savePriceOverride(test.name,editVal)} style={{background:"#111",color:"#fff",border:"none",borderRadius:5,padding:"3px 7px",cursor:"pointer",fontSize:11}}>✓</button>
+                        <button onClick={()=>savePriceOverride(test.name,editVal)} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:5,padding:"3px 7px",cursor:"pointer",fontSize:11}}>✓</button>
                       </div>
                     ) : (
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <span style={{fontWeight:700,color:priceOverrides[test.name]!==undefined?"#6366f1":"#111",fontSize:14}}>
+                        <span style={{fontWeight:700,color:priceOverrides[test.name]!==undefined?"#0F6E56":"#111",fontSize:14}}>
                           {effPrice>0 ? (dispPrice ? Math.round(dispPrice*100)/100 : effPrice).toLocaleString() : "—"}
                         </span>
                         <span style={{fontSize:11,color:"#aaa"}}>{dispCurrency}</span>
                         {isAdmin && <button onClick={()=>{setEditingPrice(test.name);setEditVal(String(effPrice));}}
-                          style={{background:"#f5f5f7",border:"1px solid #e5e5e5",color:"#555",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontSize:11}}>✏</button>}
+                          style={{background:"#f5f5f7",border:"1px solid #e5e5e5",color:"#555",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontSize:11,display:"inline-flex",alignItems:"center"}}><Icon name="edit" size={12}/></button>}
                       </div>
                     )}
                   </div>
@@ -3987,7 +4100,7 @@ function TestsPage({ t, isAdmin }) {
                     <button onClick={()=>delCustom(test._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:12,padding:0}}>✕ {ar?"حذف":"Remove"}</button>
                   )}
                   {priceOverrides[test.name]!==undefined && (
-                    <button onClick={()=>resetPrice(test.name)} style={{background:"none",border:"none",color:"#aaa",cursor:"pointer",fontSize:11,padding:0}}>↺ {ar?"إعادة":"Reset"}</button>
+                    <button onClick={()=>resetPrice(test.name)} style={{background:"none",border:"none",color:"#aaa",cursor:"pointer",fontSize:11,padding:0,display:"inline-flex",alignItems:"center",gap:4}}><Icon name="refresh" size={12}/> {ar?"إعادة":"Reset"}</button>
                   )}
                 </div>
               </div>
@@ -3996,7 +4109,7 @@ function TestsPage({ t, isAdmin }) {
         </div>
       ) : (
         // Desktop: table layout
-        <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+        <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
           <thead>
             <tr style={{background:"#fafafa",borderBottom:"1.5px solid #e5e5e5"}}>
@@ -4033,13 +4146,13 @@ function TestsPage({ t, isAdmin }) {
                         onKeyDown={e=>{if(e.key==="Enter")savePriceOverride(test.name,editVal);if(e.key==="Escape")setEditingPrice(null);}}
                         style={{width:90,background:"#fafafa",border:"1.5px solid #111",borderRadius:6,padding:"4px 8px",fontSize:13,textAlign:"end",color:"#111"}}/>
                       <button onClick={()=>savePriceOverride(test.name,editVal)}
-                        style={{background:"#111",color:"#fff",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:12}}>✓</button>
+                        style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:12}}>✓</button>
                       <button onClick={()=>setEditingPrice(null)}
                         style={{background:"#fafafa",color:"#888",border:"1px solid #e5e5e5",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:12}}>✕</button>
                     </div>
                   ) : (
                     <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end"}}>
-                      <span style={{fontWeight:600,color:priceOverrides[test.name]!==undefined?"#6366f1":"#111"}}>
+                      <span style={{fontWeight:600,color:priceOverrides[test.name]!==undefined?"#0F6E56":"#111"}}>
                         {(() => {
                           const p = getPrice(test);
                           if (!p && p !== 0) return "—";
@@ -4050,13 +4163,13 @@ function TestsPage({ t, isAdmin }) {
                       </span>
                       {isAdmin && (
                         <button onClick={()=>{setEditingPrice(test.name);setEditVal(String(getPrice(test)));}}
-                          style={{background:"#f5f5f7",border:"1px solid #e5e5e5",cursor:"pointer",color:"#555",fontSize:11,padding:"2px 8px",borderRadius:5}}>
-                          ✏</button>
+                          style={{background:"#f5f5f7",border:"1px solid #e5e5e5",cursor:"pointer",color:"#555",fontSize:11,padding:"3px 8px",borderRadius:5,display:"inline-flex",alignItems:"center"}}>
+                          <Icon name="edit" size={12}/></button>
                       )}
                       {isAdmin && priceOverrides[test.name]!==undefined && (
                         <button onClick={()=>resetPrice(test.name)}
                           title="Reset to original"
-                          style={{background:"none",border:"none",cursor:"pointer",color:"#ef4444",fontSize:11,padding:"2px 4px"}}>↺</button>
+                          style={{background:"none",border:"none",cursor:"pointer",color:"#C7362F",fontSize:11,padding:"2px 4px",display:"inline-flex",alignItems:"center"}}><Icon name="refresh" size={12} color="#C7362F"/></button>
                       )}
                     </div>
                   )}
@@ -4069,7 +4182,7 @@ function TestsPage({ t, isAdmin }) {
                   <td style={{padding:"8px 12px",textAlign:"center"}}>
                     <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                       <button onClick={()=>{setEditingTest(test.name);setEditTestVal({name:test.name,tat:test.tat||"",lab:test.lab||"",price:test._custom?String(test.price||0):String(priceOverrides[test.name]||test.price||0)});}}
-                        style={{background:"#f5f5f7",border:"1px solid #e5e5e5",color:"#555",borderRadius:5,padding:"3px 8px",cursor:"pointer",fontSize:11}}>✏</button>
+                        style={{background:"#f5f5f7",border:"1px solid #e5e5e5",color:"#555",borderRadius:5,padding:"3px 8px",cursor:"pointer",fontSize:11,display:"inline-flex",alignItems:"center"}}><Icon name="edit" size={12}/></button>
                       {test._custom && (
                         <button onClick={() => delCustom(test._id)}
                           style={{background:"#fff8f8",border:"1px solid #fca5a5",color:"#ef4444",borderRadius:5,padding:"3px 8px",cursor:"pointer",fontSize:11}}>✕</button>
@@ -4132,7 +4245,7 @@ function TestsPage({ t, isAdmin }) {
                 }
                 setEditingTest(null);
               }}
-                style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600}}>
+                style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600}}>
                 {ar?"حفظ":"Save"}
               </button>
             </div>
@@ -4144,9 +4257,9 @@ function TestsPage({ t, isAdmin }) {
       {filtered.length > PAGE_SIZE && (() => {
         const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
         const btnStyle = (active, disabled) => ({
-          background: active?"#111":"#fff",
+          background: active?TOK.primary:"#fff",
           color: active?"#fff":disabled?"#ccc":"#555",
-          border: `1px solid ${active?"#111":"#e5e5e5"}`,
+          border: `1px solid ${active?TOK.primary:"#e5e5e5"}`,
           borderRadius:8, padding:"6px 12px", cursor:disabled?"default":"pointer",
           fontSize:13, fontWeight:active?600:400, transition:"all .15s",
           minWidth:36, textAlign:"center"
@@ -4256,20 +4369,20 @@ function ClientsBookPage({ t, isAdmin }) {
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <h2 style={{color:"#111",fontSize:mob?17:21,fontWeight:700,margin:0,letterSpacing:"-0.4px"}}>
-            👥 {ar?"دفتر العملاء":"Clients"}
+          <h2 style={{color:TOK.ink,fontSize:mob?18:22,fontWeight:700,margin:0,letterSpacing:"-0.4px",display:"flex",alignItems:"center",gap:9}}>
+            <Icon name="users" size={20} color={TOK.primary}/> {ar?"دفتر العملاء":"Clients"}
           </h2>
           <p style={{color:"#aaa",fontSize:12,margin:"3px 0 0"}}>{filtered.length} {ar?"عميل":"clients"}</p>
         </div>
         <button onClick={openAdd}
-          style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600}}>
+          style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600}}>
           + {ar?"إضافة عميل":"Add Client"}
         </button>
       </div>
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:14,padding:mob?16:24,marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+        <div style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
           <div style={{fontSize:11,fontWeight:600,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:16}}>
             {editing?(ar?"تعديل العميل":"EDIT CLIENT"):(ar?"عميل جديد":"NEW CLIENT")}
           </div>
@@ -4280,7 +4393,7 @@ function ClientsBookPage({ t, isAdmin }) {
                 placeholder={ar?"اسم العميل أو المستشفى":"Client or hospital name"} style={inp()}/>
             </div>
             <div style={{marginBottom:14}}>
-              <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>📧 {ar?"البريد الإلكتروني":"Email"}</label>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}><Icon name="mail" size={13} color="#5B6B67"/> {ar?"البريد الإلكتروني":"Email"}</label>
               <input type="email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))}
                 placeholder="example@email.com" style={inp()}/>
             </div>
@@ -4300,7 +4413,7 @@ function ClientsBookPage({ t, isAdmin }) {
                 placeholder={ar?"عنوان العميل":"Client address"} style={inp()}/>
             </div>
             <div style={{gridColumn:"1/-1",marginBottom:14}}>
-              <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>📝 {ar?"ملاحظات":"Notes"}</label>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}><Icon name="fileText" size={13} color="#5B6B67"/> {ar?"ملاحظات":"Notes"}</label>
               <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}
                 rows={2} placeholder={ar?"أي ملاحظات...":"Any notes..."} style={{...inp(),resize:"vertical"}}/>
             </div>
@@ -4311,7 +4424,7 @@ function ClientsBookPage({ t, isAdmin }) {
               {ar?"إلغاء":"Cancel"}
             </button>
             <button onClick={handleSave}
-              style={{background:"#111",color:"#fff",border:"none",borderRadius:8,padding:"9px 24px",cursor:"pointer",fontSize:13,fontWeight:600}}>
+              style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"9px 24px",cursor:"pointer",fontSize:13,fontWeight:600}}>
               ✓ {ar?"حفظ":"Save"}
             </button>
           </div>
@@ -4326,20 +4439,20 @@ function ClientsBookPage({ t, isAdmin }) {
 
       {/* Search */}
       <input value={search} onChange={e=>setSearch(e.target.value)}
-        placeholder={ar?"🔍 ابحث باسم العميل أو البريد أو الرقم...":"🔍 Search by name, email or phone..."}
+        placeholder={ar?"ابحث باسم العميل أو البريد أو الرقم...":"Search by name, email or phone..."}
         style={{...inp(),marginBottom:16,padding:"10px 14px"}}/>
 
       {/* Clients list */}
       {filtered.length === 0 ? (
         <div style={{textAlign:"center",padding:48,color:"#aaa"}}>
-          <div style={{fontSize:36,marginBottom:12}}>👥</div>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><Icon name="users" size={40} color="#C7D4CF" stroke={1.5}/></div>
           <div style={{fontSize:15,fontWeight:600,color:"#6b7280"}}>{ar?"لا يوجد عملاء بعد":"No clients yet"}</div>
           <div style={{fontSize:13,color:"#aaa",marginTop:4}}>{ar?"اضغط + إضافة عميل للبدء":"Click + Add Client to get started"}</div>
         </div>
       ) : (
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
           {filtered.map(c => (
-            <div key={c.id} style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:18,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div key={c.id} style={{background:"#fff",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:18,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <div style={{width:42,height:42,borderRadius:"50%",background:"#111",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
@@ -4365,26 +4478,30 @@ function ClientsBookPage({ t, isAdmin }) {
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:7}}>
                 {c.email && (
-                  <a href={"mailto:"+c.email} style={{display:"flex",alignItems:"center",gap:8,color:"#555",textDecoration:"none",fontSize:13}}>
-                    <span style={{width:28,height:28,borderRadius:7,background:"#f5f5f7",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>📧</span>
-                    {c.email}
-                  </a>
+                  <div style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}>
+                    <span style={{width:28,height:28,borderRadius:7,background:"#f5f5f7",display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="mail" size={14} color="#5B6B67"/></span>
+                    <span style={{color:"#555",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis"}}>{c.email}</span>
+                    <button onClick={()=>composeEmail({to:c.email, subject:(getEmailSettings().senderName||"Harmony Medical Group")+" — "+c.name, body:(ar?`عزيزي ${c.name}،\n\n`:`Dear ${c.name},\n\n`)})}
+                      style={{background:TOK.tint,color:TOK.primary,border:"none",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,fontWeight:600,display:"inline-flex",alignItems:"center",gap:5,flexShrink:0}}>
+                      <Icon name="send" size={12} color={TOK.primary}/> {ar?"إرسال":"Compose"}
+                    </button>
+                  </div>
                 )}
                 {c.phone && (
                   <a href={"tel:"+c.phone} style={{display:"flex",alignItems:"center",gap:8,color:"#555",textDecoration:"none",fontSize:13}}>
-                    <span style={{width:28,height:28,borderRadius:7,background:"#f5f5f7",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>📱</span>
+                    <span style={{width:28,height:28,borderRadius:7,background:"#f5f5f7",display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="phone" size={14} color="#5B6B67"/></span>
                     {c.phone}
                   </a>
                 )}
                 {c.phone2 && (
                   <a href={"tel:"+c.phone2} style={{display:"flex",alignItems:"center",gap:8,color:"#555",textDecoration:"none",fontSize:13}}>
-                    <span style={{width:28,height:28,borderRadius:7,background:"#f5f5f7",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>📱</span>
+                    <span style={{width:28,height:28,borderRadius:7,background:"#f5f5f7",display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="phone" size={14} color="#5B6B67"/></span>
                     {c.phone2}
                   </a>
                 )}
                 {c.notes && (
                   <div style={{display:"flex",alignItems:"flex-start",gap:8,color:"#888",fontSize:12,marginTop:2}}>
-                    <span style={{flexShrink:0}}>📝</span>
+                    <span style={{flexShrink:0,display:"inline-flex"}}><Icon name="fileText" size={14} color="#5B6B67"/></span>
                     <span>{c.notes}</span>
                   </div>
                 )}
@@ -4417,7 +4534,7 @@ function ForgotPasswordPage({ onBack, lang, setLang }) {
     <div dir={ar?"rtl":"ltr"} style={{fontFamily:ar?"'Cairo','Segoe UI',sans-serif":"'Inter','Segoe UI',sans-serif",minHeight:"100vh",background:"linear-gradient(135deg,#2d2d2d 0%,#111111 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
       <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")} style={{position:"fixed",top:16,insetInlineEnd:16,background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>
-        🌐 {ar?"English":"عربي"}
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon name="globe" size={14}/> {ar?"English":"عربي"}</span>
       </button>
       <div style={{width:"100%",maxWidth:420}}>
         <div style={{textAlign:"center",marginBottom:28}}>
@@ -4442,7 +4559,7 @@ function ForgotPasswordPage({ onBack, lang, setLang }) {
               onFocus={e=>e.target.style.borderColor="#111"} onBlur={e=>e.target.style.borderColor="#e5e5e5"}/>
           </div>
           <button onClick={handleReset}
-            style={{width:"100%",background:"#111",color:"#fff",border:"none",borderRadius:10,padding:"13px",cursor:"pointer",fontSize:15,fontWeight:700,marginBottom:12}}>
+            style={{width:"100%",background:TOK.primary,color:"#fff",border:"none",borderRadius:10,padding:"13px",cursor:"pointer",fontSize:15,fontWeight:700,marginBottom:12}}>
             {ar?"استرداد كلمة المرور":"Recover Password"}
           </button>
           <button onClick={onBack}
@@ -4487,7 +4604,7 @@ function SignUpPage({ onSignUp, onBack, lang, setLang }) {
     <div dir={ar?"rtl":"ltr"} style={{fontFamily:ar?"'Cairo','Segoe UI',sans-serif":"'Inter','Segoe UI',sans-serif",minHeight:"100vh",background:"linear-gradient(135deg,#2d2d2d 0%,#111111 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
       <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")} style={{position:"fixed",top:16,insetInlineEnd:16,background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>
-        🌐 {ar?"English":"عربي"}
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon name="globe" size={14}/> {ar?"English":"عربي"}</span>
       </button>
       <div style={{width:"100%",maxWidth:420}}>
         <div style={{textAlign:"center",marginBottom:28}}>
@@ -4498,7 +4615,7 @@ function SignUpPage({ onSignUp, onBack, lang, setLang }) {
         <div style={{background:"#fff",borderRadius:20,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}>
           <h2 style={{fontSize:19,fontWeight:700,color:"#111",margin:"0 0 20px",textAlign:"center"}}>{ar?"حساب جديد":"Sign Up"}</h2>
           {error && (
-            <div style={{background:"#fff8f8",border:"1px solid #fca5a5",borderRadius:10,padding:"10px 14px",marginBottom:14,color:"#ef4444",fontSize:13,fontWeight:500}}>⚠ {error}</div>
+            <div style={{background:"#fff8f8",border:"1px solid #fca5a5",borderRadius:10,padding:"10px 14px",marginBottom:14,color:"#ef4444",fontSize:13,fontWeight:500}}><Icon name="alert" size={13} style={{verticalAlign:"-2px",marginInlineEnd:5}}/>{error}</div>
           )}
           <div style={{marginBottom:14}}>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:"#555",marginBottom:5}}>{ar?"اسم المستخدم":"Username"}</label>
@@ -4517,7 +4634,7 @@ function SignUpPage({ onSignUp, onBack, lang, setLang }) {
                 style={{width:"100%",boxSizing:"border-box",background:"#f9fafb",border:"1.5px solid #e5e5e5",borderRadius:8,padding:"11px 44px 11px 14px",color:"#111",fontSize:14,outline:"none"}}
                 onFocus={e=>e.target.style.borderColor="#111"} onBlur={e=>e.target.style.borderColor="#e5e5e5"}/>
               <button onClick={()=>setShowPass(s=>!s)} style={{position:"absolute",insetInlineEnd:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:17,color:"#aaa",padding:0}}>
-                {showPass?"🙈":"👁"}
+                <Icon name={showPass?"eyeOff":"eye"} size={17} color="#9ca3af"/>
               </button>
             </div>
           </div>
@@ -4704,12 +4821,12 @@ function App() {
   const totalRevenue = samples.reduce((a,s)=>a+Number(s.salePrice||0),0);
 
   const stats = [
-    {l:t.dash.total, v:samples.length, c:"#6366f1"},
-    {l:t.dash.pending, v:samples.filter(s=>s.status==="received").length, c:"#3b82f6"},
-    {l:t.dash.abroad, v:samples.filter(s=>["sent","abroad"].includes(s.status)).length, c:"#f59e0b"},
-    {l:t.dash.overdue, v:overdue.length, c:"#ef4444"},
-    {l:t.dash.done, v:samples.filter(s=>s.status==="done").length, c:"#10b981"},
-    ...(isAdmin ? [{l:t.dash.revenue, v:fmt(totalRevenue)+" EGP", c:"#8b5cf6"}] : []),
+    {l:t.dash.total, v:samples.length, c:TOK.primary},
+    {l:t.dash.pending, v:samples.filter(s=>s.status==="received").length, c:SC.received},
+    {l:t.dash.abroad, v:samples.filter(s=>["sent","abroad"].includes(s.status)).length, c:SC.abroad},
+    {l:t.dash.overdue, v:overdue.length, c:SC.overdue},
+    {l:t.dash.done, v:samples.filter(s=>s.status==="done").length, c:SC.done},
+    ...(isAdmin ? [{l:t.dash.revenue, v:fmt(totalRevenue)+" EGP", c:TOK.primary}] : []),
   ];
 
   const saveToSupabase = async (data) => {
@@ -4811,7 +4928,7 @@ function App() {
   if (!currentUser) return <LoginPage onLogin={handleLogin} lang={lang} setLang={setLang} onSignUp={()=>setShowSignUp(true)} onForgot={()=>setShowForgot(true)}/>;
 
   return (
-    <div dir={t.dir} style={{fontFamily:lang==="ar"?"'Cairo','Segoe UI',sans-serif":"'Inter','Segoe UI',sans-serif",minHeight:"100vh",background:"#f5f5f7",color:"#111111"}}>
+    <div dir={t.dir} style={{fontFamily:TOK.sans,minHeight:"100vh",background:TOK.canvas,color:TOK.ink}}>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 
       {/* ── Topbar ── */}
@@ -4832,11 +4949,11 @@ function App() {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {overdue.length>0 && (
-            <div style={{background:"#ef4444",color:"#fff",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700,letterSpacing:"0.2px"}}>⚠ {overdue.length}</div>
+            <div style={{background:"#C7362F",color:"#fff",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700,letterSpacing:"0.2px",display:"inline-flex",alignItems:"center",gap:4}}><Icon name="alert" size={12} color="#fff"/> <span style={NUM}>{overdue.length}</span></div>
           )}
-          {syncStatus==="syncing" && <span title="Syncing" style={{fontSize:12,color:"#f59e0b"}}>⟳</span>}
-          {syncStatus==="ok" && <span title="Synced" style={{fontSize:12,color:"#10b981"}}>✓</span>}
-          <button onClick={()=>loadSamplesFromSupabase()} title={lang==="ar"?"تحديث":"Refresh"} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#aaa",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>↺</button>
+          {syncStatus==="syncing" && <span title="Syncing" style={{display:"inline-flex",color:"#B26B00"}}><Icon name="refresh" size={14} color="#B26B00"/></span>}
+          {syncStatus==="ok" && <span title="Synced" style={{display:"inline-flex",color:"#0F8A5F"}}><Icon name="check" size={14} color="#0F8A5F"/></span>}
+          <button onClick={()=>loadSamplesFromSupabase()} title={lang==="ar"?"تحديث":"Refresh"} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#5B6B67",borderRadius:7,padding:"6px 9px",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name="refresh" size={15}/></button>
           {isAdmin && <button onClick={async()=>{
             if(!window.confirm(lang==="ar"?"رفع كل العينات إلى السحابة؟":"Sync all samples to cloud?")) return;
             setSyncStatus("syncing");
@@ -4844,16 +4961,16 @@ function App() {
             await flushPending();
             setSyncStatus("ok");
             alert((lang==="ar"?"تم رفع ":"Synced ")+ok+"/"+samples.length);
-          }} title="Sync all to cloud" style={{background:"#111",color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>☁</button>}
-          <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")} style={{background:"#f5f5f7",border:"1px solid #e5e5e5",color:"#555",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:500}}>
-            🌐 {t.lang}
+          }} title="Sync all to cloud" style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:7,padding:"6px 9px",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name="cloud" size={15} color="#fff"/></button>}
+          <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")} style={{background:"#f5f5f7",border:"1px solid #e5e5e5",color:"#555",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:500,display:"inline-flex",alignItems:"center",gap:6}}>
+            <Icon name="globe" size={14}/> {t.lang}
           </button>
-          <div style={{display:"flex",alignItems:"center",gap:6,background:isAdmin?"#111":"#f5f5f7",border:"none",borderRadius:7,padding:"5px 12px"}}>
-            <span style={{fontSize:12,color:isAdmin?"#fff":"#9ca3af"}}>{isAdmin?"●":"○"}</span>
+          <div style={{display:"flex",alignItems:"center",gap:6,background:isAdmin?TOK.primary:"#f5f5f7",border:"none",borderRadius:7,padding:"5px 12px"}}>
+            <span style={{fontSize:12,color:isAdmin?"#9FE1CB":"#9ca3af"}}>{isAdmin?"●":"○"}</span>
             <span style={{fontSize:13,fontWeight:600,color:isAdmin?"#fff":"#111"}}>{currentUser?.username}</span>
           </div>
-          {isAdmin && <button onClick={handleClearData} title={lang==="ar"?"مسح كل البيانات":"Clear all data"} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#aaa",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12}}>
-            🗑
+          {isAdmin && <button onClick={handleClearData} title={lang==="ar"?"مسح كل البيانات":"Clear all data"} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#9ca3af",borderRadius:7,padding:"6px 9px",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>
+            <Icon name="trash" size={15}/>
           </button>}
         </div>
       </div>
@@ -4881,7 +4998,7 @@ function App() {
             width:260,
             background:"#fff",
             zIndex:200,
-            borderInlineEnd:"1px solid #e5e5e5",
+            borderInlineEnd:`1px solid ${TOK.line}`,
             transform: mobileMenuOpen?"translateX(0)":t.dir==="rtl"?"translateX(100%)":"translateX(-100%)",
             transition:"transform .25s cubic-bezier(.4,0,.2,1)",
             overflowY:"auto",
@@ -4896,15 +5013,15 @@ function App() {
                   style={{
                     display:"flex", alignItems:"center", gap:12,
                     width:"100%", padding:"12px 18px", height:48,
-                    background:isActive?"#f5f5f7":"transparent",
-                    color:isActive?"#111":"#555",
+                    background:isActive?"#E1F5EE":"transparent",
+                    color:isActive?TOK.primary:"#5B6B67",
                     border:"none", cursor:"pointer",
                     textAlign:t.dir==="rtl"?"right":"left",
-                    borderInlineStart:isActive?"3px solid #111":"3px solid transparent",
-                    transition:"background .15s",
+                    borderInlineStart:isActive?`3px solid ${TOK.primary}`:"3px solid transparent",
+                    transition:"background .18s, color .18s",
                   }}>
-                  <span dangerouslySetInnerHTML={{__html:svgIcon}} style={{flexShrink:0,opacity:isActive?1:0.6}}/>
-                  <span style={{fontSize:14,fontWeight:isActive?600:400}}>{label}</span>
+                  <span dangerouslySetInnerHTML={{__html:svgIcon}} style={{flexShrink:0,opacity:isActive?1:0.7}}/>
+                  <span style={{fontSize:14,fontWeight:isActive?600:500}}>{label}</span>
                 </button>
               );
             })}
@@ -4921,12 +5038,12 @@ function App() {
             style={{
               width: sidebarExpanded ? 220 : 58,
               background:"#ffffff",
-              borderInlineEnd:"1px solid #e5e5e5",
+              borderInlineEnd:`1px solid ${TOK.line}`,
               padding:"10px 0",
               flexShrink:0,
               transition:"width .22s cubic-bezier(.4,0,.2,1)",
               overflow:"hidden",
-              boxShadow: sidebarExpanded ? "2px 0 12px rgba(0,0,0,0.06)" : "none",
+              boxShadow: sidebarExpanded ? "2px 0 14px rgba(16,32,30,0.07)" : "none",
               position:"relative",
               zIndex:10,
             }}>
@@ -4934,15 +5051,16 @@ function App() {
               @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
               * { box-sizing: border-box; }
               body { margin: 0; }
-              .nav-btn { transition: background .15s, color .15s !important; }
+              .nav-btn { transition: background .18s, color .18s !important; }
               tr:hover .edit-price-btn { opacity: 1 !important; }
-              .nav-btn:hover { background: #f4f4f8 !important; color: #111 !important; }
-              .nav-btn-active { background: #111 !important; color: #fff !important; }
-              .nav-btn-active svg { stroke: #fff !important; }
-              .nav-btn:hover svg { stroke: #111 !important; }
+              .nav-btn:hover { background: #F1F6F4 !important; color: #10201E !important; }
+              .nav-btn:hover svg { stroke: #10201E !important; }
+              .nav-btn-active { background: #E1F5EE !important; color: #0F6E56 !important; }
+              .nav-btn-active svg { stroke: #0F6E56 !important; }
+              .nav-btn-active:hover { background: #D3EDE5 !important; color: #0F6E56 !important; }
               ::-webkit-scrollbar { width: 4px; height: 4px; }
               ::-webkit-scrollbar-track { background: transparent; }
-              ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+              ::-webkit-scrollbar-thumb { background: #C7D4CF; border-radius: 4px; }
             `}</style>
             <div style={{paddingTop:4}}>
               {navItems.map(([key,,label])=>{
@@ -4958,13 +5076,13 @@ function App() {
                       width:"100%",
                       padding:"0",
                       height:44,
-                      background:isActive?"#eef2ff":"transparent",
-                      color:isActive?"#4f46e5":"#6b7280",
+                      background:isActive?"#E1F5EE":"transparent",
+                      color:isActive?TOK.primary:"#5B6B67",
                       border:"none",
                       cursor:"pointer",
                       textAlign:"start",
-                      transition:"background .15s, color .15s",
-                      borderInlineStart: isActive ? "3px solid #111" : "3px solid transparent",
+                      transition:"background .18s, color .18s",
+                      borderInlineStart: isActive ? `3px solid ${TOK.primary}` : "3px solid transparent",
                       position:"relative",
                       overflow:"hidden",
                     }}>
@@ -4987,7 +5105,7 @@ function App() {
                       opacity: sidebarExpanded?1:0,
                       transform: sidebarExpanded?"translateX(0)":"translateX(-8px)",
                       transition:"opacity .2s, transform .2s",
-                      color: isActive?"#4f46e5":"#374151",
+                      color: isActive?TOK.primary:"#374151",
                     }}>
                       {label}
                     </span>
@@ -4999,7 +5117,7 @@ function App() {
         )}
 
         {/* ── Content ── */}
-        <div style={{flex:1,padding:mob?14:28,overflowY:"auto",maxHeight:"calc(100vh - 58px)",background:"#f5f5f7"}}>
+        <div key={tab} className="hmg-fade" style={{flex:1,padding:mob?14:28,overflowY:"auto",maxHeight:"calc(100vh - 58px)",background:TOK.canvas}}>
 
           {/* TAT Toast Notification */}
           {showToast && newOverdue.length>0 && (
@@ -5007,7 +5125,7 @@ function App() {
               <style>{`@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}`}</style>
               <div style={{background:"#1e1e1e",borderRadius:14,padding:"14px 16px",boxShadow:"0 8px 32px rgba(0,0,0,0.25)",borderInlineStart:"4px solid #ef4444"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <span style={{color:"#fca5a5",fontWeight:700,fontSize:13}}>🚨 {lang==="ar"?"⚠ تجاوز موعد TAT":"⚠ TAT Exceeded"}</span>
+                  <span style={{color:"#fca5a5",fontWeight:700,fontSize:13,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="alert" size={14} color="#fca5a5"/> {lang==="ar"?"تجاوز موعد TAT":"TAT Exceeded"}</span>
                   <button onClick={()=>setShowToast(false)} style={{background:"none",border:"none",color:"#aaa",cursor:"pointer",fontSize:16,lineHeight:1}}>×</button>
                 </div>
                 {newOverdue.slice(0,3).map(s=>{
@@ -5036,7 +5154,7 @@ function App() {
           {showAlert && overdue.length>0 && (
             <div style={{background:"#fff",border:"1px solid #e5e5e5",borderRadius:12,padding:"12px 14px",marginBottom:16,boxShadow:"0 1px 4px rgba(239,68,68,0.08)",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
               <div style={{minWidth:0,flex:1}}>
-                <div style={{color:"#991b1b",fontWeight:700,marginBottom:6,fontSize:14}}>🚨 {t.alert.title}</div>
+                <div style={{color:"#991b1b",fontWeight:700,marginBottom:6,fontSize:14,display:"flex",alignItems:"center",gap:7}}><Icon name="alert" size={15} color="#C7362F"/> {t.alert.title}</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:6}}>
                   {overdue.slice(0,6).map(s=>{
                     const tat=getTAT(s.testType);
@@ -5057,36 +5175,47 @@ function App() {
                     );
                   })}
                 </div>
-                {overdue.length>6 && <div style={{color:"#dc2626",fontSize:12,marginTop:8,fontWeight:500}}>+{overdue.length-6} {lang==="ar"?"عينة أخرى متأخرة":"more overdue samples"}</div>}
+                {overdue.length>6 && <div style={{color:"#C7362F",fontSize:12,marginTop:8,fontWeight:500}}>+{overdue.length-6} {lang==="ar"?"عينة أخرى متأخرة":"more overdue samples"}</div>}
               </div>
-              <button onClick={()=>setShowAlert(false)} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:20,flexShrink:0,lineHeight:1}}>×</button>
+              <button onClick={()=>setShowAlert(false)} style={{background:"none",border:"none",color:"#C7362F",cursor:"pointer",fontSize:20,flexShrink:0,lineHeight:1}}>×</button>
             </div>
           )}
 
           {/* Dashboard */}
           {tab==="dashboard" && (
             <div>
-              <h2 style={{color:"#111",fontSize:mob?17:20,marginBottom:16}}>{t.nav.dashboard}</h2>
-              <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(3,1fr)",gap:12,marginBottom:22}}>
-                {stats.map((s,i)=>(
-                  <div key={i} style={{background:"#fafafa",border:`1px solid ${s.c}33`,borderRadius:11,padding:"14px",borderTop:`3px solid ${s.c}`}}>
-                    <div style={{fontSize:mob?20:24,fontWeight:700,color:s.c}}>{s.v}</div>
-                    <div style={{fontSize:11,color:"#111",marginTop:3}}>{s.l}</div>
-                  </div>
-                ))}
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:TOK.primary}}>{lang==="ar"?"نظرة عامة على العمليات":"Operations overview"}</div>
+                <h2 style={{color:TOK.ink,fontSize:mob?18:22,margin:"3px 0 0",fontWeight:700}}>{t.nav.dashboard}</h2>
               </div>
-              <div style={{background:"#fafafa",borderRadius:12,border:"1px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{padding:"12px 16px",borderBottom:"1px solid #f0f0f0",fontWeight:600,color:"#111",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:14}}>
-                  <span>🧪 {t.nav.samples}</span>
-                  <button onClick={()=>goTab("form")} style={{background:"#111",color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",cursor:"pointer",fontSize:12}}>+ {t.nav.newSample}</button>
+              <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:22}}>
+                {stats.map((s,i)=>{
+                  const isRev = s.l===t.dash.revenue;
+                  return isRev ? (
+                    <div key={i} style={{background:TOK.primary,borderRadius:12,padding:"14px 15px"}}>
+                      <div style={{fontSize:11,color:"#9FE1CB",fontWeight:500}}>{s.l}</div>
+                      <div style={{...NUM,fontSize:mob?19:22,fontWeight:600,color:"#fff",marginTop:5}}>{s.v}</div>
+                    </div>
+                  ) : (
+                    <div key={i} style={{background:TOK.surface,border:`1px solid ${TOK.line}`,borderTop:`3px solid ${s.c}`,borderRadius:12,padding:"14px 15px"}}>
+                      <div style={{fontSize:11,color:TOK.ink2,fontWeight:500}}>{s.l}</div>
+                      <div style={{...NUM,fontSize:mob?22:27,fontWeight:600,color:s.c,marginTop:5}}>{s.v}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{background:TOK.surface,borderRadius:12,border:`1px solid ${TOK.line}`,overflow:"hidden"}}>
+                <div style={{padding:"12px 16px",borderBottom:"1px solid #EEF3F1",fontWeight:700,color:TOK.ink,display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:14}}>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon name="sample" size={17} color={TOK.primary}/> {t.nav.samples}</span>
+                  <button onClick={()=>goTab("form")} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"7px 13px",cursor:"pointer",fontSize:12,fontWeight:600}}>+ {t.nav.newSample}</button>
                 </div>
                 {samples.slice(0,5).map((s,i)=>(
-                  <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderTop:i>0?"1px solid #0f172a":"none",gap:8}}>
+                  <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderTop:i>0?"1px solid #F2F6F4":"none",gap:8}}>
                     <div style={{minWidth:0}}>
-                      <div style={{color:"#111",fontWeight:500,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
-                      <div style={{color:"#111",fontSize:11,fontFamily:"monospace"}}>{s.sampleCode}</div>
+                      <div style={{color:TOK.ink,fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
+                      <div style={{...NUM,color:TOK.ink2,fontSize:11,marginTop:1}}>{s.sampleCode}</div>
                     </div>
-                    <span style={{background:"#fff",color:"#111",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:600,border:"1px solid #e5e5e5",boxShadow:"0 2px 4px rgba(0,0,0,0.08),0 0 0 1px rgba(0,0,0,0.04)",flexShrink:0}}>{t.statuses[s.status]}</span>
+                    <span style={{background:(SC[s.status]||"#888")+"18",color:SC[s.status]||TOK.ink2,borderRadius:20,padding:"3px 11px",fontSize:11,fontWeight:600,border:`1px solid ${(SC[s.status]||"#888")}33`,flexShrink:0,whiteSpace:"nowrap"}}>{t.statuses[s.status]}</span>
                   </div>
                 ))}
               </div>
