@@ -399,6 +399,7 @@ const ICON_PATHS = {
   mapPin:`<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>`,
   chevronUp:`<polyline points="18 15 12 9 6 15"/>`,
   chevronDown:`<polyline points="6 9 12 15 18 9"/>`,
+  arrowLeft:`<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>`,
 };
 const Icon = ({name, size=16, stroke=2, color="currentColor", style}) => (
   React.createElement("svg", {
@@ -430,6 +431,105 @@ const composeEmail = ({ to="", subject="", body="", includeSignature=true } = {}
   const full = (body || "") + (includeSignature ? emailSignature() : "");
   if (full) parts.push("body=" + encodeURIComponent(full));
   window.location.href = "mailto:" + (to || "") + (parts.length ? "?" + parts.join("&") : "");
+};
+
+// ─── Smart Excel import ───────────────────────────────────────────────────────
+// Maps arbitrary spreadsheet columns (English or Arabic headers) onto sample
+// fields using a synonym dictionary + value normalizers, so the whole sheet
+// lands where it belongs instead of only a handful of columns.
+const XL_FIELDS = [
+  ["sampleCode",    ["sample code","sample id","sample no","barcode","code","id","كود","الكود","رقم العينة","باركود"]],
+  ["patientName",   ["patient name","patient","full name","name","اسم المريض","المريض","الاسم","اسم"]],
+  ["age",           ["age","العمر","السن"]],
+  ["gender",        ["gender","sex","النوع","الجنس"]],
+  ["doctor",        ["referring doctor","doctor","physician","dr","الطبيب","الدكتور","دكتور"]],
+  ["hospital",      ["client","hospital","clinic","account name","account","العميل","المستشفى","العيادة","الجهة"]],
+  ["testType",      ["test type","test name","test","analysis","investigation","exam","نوع الفحص","التحليل","الفحص","الاختبار"]],
+  ["externalLab",   ["external lab","reference lab","laboratory","lab name","lab","destination","country","المعمل","المختبر","البلد","الدولة","الوجهة"]],
+  ["shipmentNumber",["shipment number","shipment no","shipment","awb","tracking number","tracking","رقم الشحنة","الشحنة","بوليصة"]],
+  ["collectDate",   ["collection date","collect date","received date","receiving date","receipt date","sample date","collected","received","receiving","تاريخ الاستلام","تاريخ الجمع","تاريخ العينة","الاستلام","date","تاريخ"]],
+  ["sentDate",      ["sent date","send date","shipped date","dispatch date","date sent","sent","shipped","تاريخ الإرسال","تاريخ الشحن","الإرسال"]],
+  ["travelDate",    ["travel date","travel","تاريخ السفر","السفر"]],
+  ["status",        ["status","state","stage","الحالة","حالة","المرحلة"]],
+  ["salePrice",     ["sale price","selling price","price","amount","total price","total","charge","fee","سعر البيع","السعر","المبلغ","الإجمالي","سعر"]],
+  ["labCost",       ["lab cost","lab price","cost price","cost","purchase price","تكلفة المعمل","التكلفة","التكلفه","تكلفة"]],
+  ["deposit",       ["deposit","advance","down payment","prepaid","العربون","المقدم","الدفعة","دفعة مقدمة"]],
+  ["paymentStatus", ["payment status","payment","paid status","حالة الدفع","الدفع","السداد"]],
+  ["notes",         ["notes","note","comments","comment","remarks","description","ملاحظات","ملاحظة","تعليق","بيان"]],
+];
+const XL_LABELS = {
+  sampleCode:"Sample code", patientName:"Patient", age:"Age", gender:"Gender", doctor:"Doctor",
+  hospital:"Client", testType:"Test", externalLab:"External lab", shipmentNumber:"Shipment #",
+  collectDate:"Receiving date", sentDate:"Sent date", travelDate:"Travel date", status:"Status",
+  salePrice:"Sale price", labCost:"Lab cost", deposit:"Deposit", paymentStatus:"Payment", notes:"Notes",
+};
+const smartParseExcel = (rows) => {
+  const headers = rows.length ? Object.keys(rows[0]) : [];
+  const norm = h => String(h).toLowerCase().trim().replace(/[_\-\.\/]+/g," ").replace(/\s+/g," ");
+  const nheaders = headers.map(h => ({ raw:h, n:norm(h) }));
+  const used = new Set();
+  const mapping = {};
+  for (const [field, syns] of XL_FIELDS) {
+    let best=null, bestScore=0;
+    for (const { raw, n } of nheaders) {
+      if (used.has(raw)) continue;
+      const words = n.split(" ");
+      let score = 0;
+      for (const s of syns) {
+        if (n === s) score = Math.max(score, 4);
+        else if (words.includes(s)) score = Math.max(score, 3);
+        else if (n.startsWith(s) || n.endsWith(s)) score = Math.max(score, 2);
+        else if (n.includes(s)) score = Math.max(score, 1);
+      }
+      if (score > bestScore) { bestScore = score; best = raw; }
+    }
+    if (best) { mapping[field] = best; used.add(best); }
+  }
+  const unmatched = headers.filter(h => !used.has(h));
+  const numOf = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n) ? 0 : n; };
+  const dateOf = v => {
+    if (v === "" || v == null) return "";
+    // Excel serial date — arrives as a number, or sometimes a bare 5-digit string
+    let serial = null;
+    if (typeof v === "number") serial = v;
+    else if (typeof v === "string" && /^\d{5}(\.\d+)?$/.test(v.trim())) serial = parseFloat(v.trim());
+    if (serial !== null && serial > 20000 && serial < 80000) {
+      if (typeof XLSX !== "undefined" && XLSX.SSF) { const d = XLSX.SSF.parse_date_code(serial); if (d) return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`; }
+      const d = new Date(Math.round((serial - 25569) * 86400000)); if (!isNaN(d)) return d.toISOString().slice(0,10);
+    }
+    const s = String(v).trim(); const d = new Date(s); return isNaN(d) ? s : d.toISOString().slice(0,10);
+  };
+  const genderOf = v => { const s = String(v).trim().toLowerCase(); if (!s) return ""; if (s[0]==="m"||s.includes("male")||s.includes("ذكر")) return "male"; if (s[0]==="f"||s.includes("female")||s.includes("أنث")||s.includes("انث")) return "female"; return ""; };
+  const payOf = v => { const s = String(v).trim().toLowerCase(); if (!s) return ""; if (/partial|جزئ|part/.test(s)) return "partial"; if (/(un\s?paid|not\s?paid|غير مدفوع|غير مدفوعة|آجل|اجل|لا|^no$)/.test(s)) return "unpaid"; if (/paid|مدفوع|مدفوعة|نعم|yes|تم|سداد|مسدد/.test(s)) return "paid"; return ""; };
+  const statusOf = v => { const s = String(v).trim().toLowerCase(); if (!s) return "";
+    if (/done|complete|finished|result|نتيجة|منجز|خلص|مكتمل/.test(s)) return "done";
+    if (/resample|re-?sample|إعادة|اعادة|repeat/.test(s)) return "resample";
+    if (/overdue|late|متأخر/.test(s)) return "overdue";
+    if (/abroad|arrived|في الخارج|وصل/.test(s)) return "abroad";
+    if (/sent|shipped|dispatch|أرسل|ارسل|مرسل|شحن/.test(s)) return "sent";
+    if (/received|receiv|new|جديد|مستلم/.test(s)) return "received";
+    return ""; };
+  const today = new Date().toISOString().slice(0,10);
+  const records = []; let skipped = 0;
+  rows.forEach(row => {
+    const g = f => mapping[f] ? String(row[mapping[f]] ?? "").trim() : "";
+    const patient = g("patientName"), test = g("testType"), rawCode = g("sampleCode");
+    if (!patient && !test && !rawCode) { skipped++; return; }
+    const collect = dateOf(g("collectDate")), sent = dateOf(g("sentDate"));
+    const sale = numOf(g("salePrice")), cost = numOf(g("labCost")), dep = numOf(g("deposit"));
+    let status = statusOf(g("status"));
+    if (!status) status = sent ? "sent" : "received";
+    let pay = payOf(g("paymentStatus"));
+    if (!pay) pay = (sale > 0 && dep >= sale) ? "paid" : dep > 0 ? "partial" : "unpaid";
+    records.push({
+      sampleCode: rawCode, patientName: patient, age: g("age"), gender: genderOf(g("gender")),
+      doctor: g("doctor"), hospital: g("hospital"), testType: test, externalLab: g("externalLab"),
+      shipmentNumber: g("shipmentNumber"), collectDate: collect || sent || today, sentDate: sent,
+      travelDate: dateOf(g("travelDate")), status, salePrice: sale, labCost: cost, deposit: dep,
+      paymentStatus: pay, notes: g("notes") || "Imported from Excel",
+    });
+  });
+  return { records, mapping, unmatched, headers, skipped };
 };
 
 
@@ -1164,6 +1264,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
 
   const fileRef = React.useRef(null);
   const [importing, setImporting] = React.useState(false);
+  const [importData, setImportData] = React.useState(null); // { records, mapping, unmatched, headers, skipped, fileName }
   const handleExcelUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1174,57 +1275,120 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      const pick = (row, keys) => {
-        for (const k of Object.keys(row)) {
-          const kl = k.toLowerCase().trim();
-          if (keys.some(x => kl === x || kl.includes(x))) return String(row[k]).trim();
-        }
-        return "";
-      };
-      const fmtDate = (v) => {
-        if (!v) return new Date().toISOString().slice(0,10);
-        if (typeof v === "number") { const d = XLSX.SSF.parse_date_code(v); if (d) return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`; }
-        const s = String(v).trim();
-        const d = new Date(s);
-        return isNaN(d) ? s : d.toISOString().slice(0,10);
-      };
-      const newSamples = [];
-      const existingCodes = new Set(samples.map(s=>s.sampleCode));
-      rows.forEach(row => {
-        const code = pick(row, ["code","كود"]) || uid();
-        const patient = pick(row, ["patient","name","اسم","مريض"]);
-        const test = pick(row, ["test","تحليل","فحص"]);
-        const country = pick(row, ["country","بلد","lab","معمل"]);
-        const date = fmtDate(pick(row, ["receiving","receive","date","collect","تاريخ"]));
-        const price = parseFloat(pick(row, ["price","سعر","amount"]).replace(/[^0-9.]/g,"")) || 0;
-        if (!patient && !test) return;
-        let id = code; let n = 1;
-        while (existingCodes.has(id) || newSamples.some(x=>x.id===id)) { id = code + "_" + (n++); }
-        existingCodes.add(id);
-        newSamples.push({
-          id, sampleCode: id, patientName: patient, testType: test,
-          externalLab: country, collectDate: date, sentDate: date,
-          status: "received", salePrice: price, labCost: 0, deposit: 0,
-          paymentStatus: "unpaid", gender: "", age: "", notes: "Imported from Excel",
-        });
-      });
-      if (!newSamples.length) { alert(ar?"لم يتم العثور على بيانات صالحة":"No valid rows found"); setImporting(false); return; }
-      setSamples(p => {
-        const next = [...p, ...newSamples];
-        try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
-        return next;
-      });
-      await upsertSamples(newSamples);
-      alert((ar?"تم استيراد ":"Imported ")+newSamples.length+(ar?" عينة":" samples"));
+      const parsed = smartParseExcel(rows);
+      if (!parsed.records.length) { alert(ar?"لم يتم العثور على بيانات صالحة":"No valid rows found"); setImporting(false); if (fileRef.current) fileRef.current.value = ""; return; }
+      setImportData({ ...parsed, fileName: file.name });
     } catch(err) {
       alert((ar?"خطأ في قراءة الملف: ":"Error reading file: ")+err.message);
     }
     setImporting(false);
     if (fileRef.current) fileRef.current.value = "";
   };
+  const confirmImport = async () => {
+    if (!importData) return;
+    setImporting(true);
+    const existing = new Set(samples.map(s=>s.sampleCode));
+    const finalized = importData.records.map(r => {
+      let id = r.sampleCode || uid(); let n = 1;
+      while (existing.has(id)) id = (r.sampleCode || "HMG") + "_" + (n++);
+      existing.add(id);
+      return { ...r, id, sampleCode: id };
+    });
+    setSamples(p => {
+      const next = [...p, ...finalized];
+      try { localStorage.setItem("harmony_samples", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    await upsertSamples(finalized);
+    const count = finalized.length;
+    setImportData(null);
+    setImporting(false);
+    alert((ar?"تم استيراد ":"Imported ")+count+(ar?" عينة":" samples"));
+  };
+  const flabel = { sampleCode:ar?"كود":"Code", patientName:ar?"المريض":"Patient", age:ar?"العمر":"Age", gender:ar?"النوع":"Gender", doctor:ar?"الطبيب":"Doctor", hospital:ar?"العميل":"Client", testType:ar?"الفحص":"Test", externalLab:ar?"المعمل":"Lab", shipmentNumber:ar?"الشحنة":"Shipment", collectDate:ar?"تاريخ الاستلام":"Receiving date", sentDate:ar?"تاريخ الإرسال":"Sent date", travelDate:ar?"تاريخ السفر":"Travel date", status:ar?"الحالة":"Status", salePrice:ar?"السعر":"Price", labCost:ar?"التكلفة":"Cost", deposit:ar?"العربون":"Deposit", paymentStatus:ar?"الدفع":"Payment", notes:ar?"ملاحظات":"Notes" };
 
   return (
     <div>
+      {/* ── Smart import preview ── */}
+      {importData && (
+        <div style={{position:"fixed",inset:0,background:"rgba(16,32,30,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:820,maxHeight:"88vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 70px rgba(0,0,0,0.28)",overflow:"hidden"}}>
+            <div style={{padding:"16px 20px",borderBottom:`1px solid ${TOK.line}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+                <Icon name="sheet" size={19} color={TOK.primary}/>
+                <div style={{minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:15,color:TOK.ink}}>{ar?"مراجعة الاستيراد":"Review import"}</div>
+                  <div style={{fontSize:12,color:TOK.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{importData.fileName}</div>
+                </div>
+              </div>
+              <button onClick={()=>setImportData(null)} style={{background:"none",border:"none",cursor:"pointer",color:"#aaa",display:"inline-flex"}}><Icon name="x" size={20}/></button>
+            </div>
+
+            <div style={{padding:"16px 20px",overflowY:"auto"}}>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:18}}>
+                {[[importData.records.length, ar?"عينة جاهزة":"samples ready", TOK.primary],
+                  [Object.keys(importData.mapping).length, ar?"عمود مطابق":"columns matched", SC.sent],
+                  [importData.unmatched.length, ar?"عمود متجاهَل":"columns ignored", TOK.muted],
+                  [importData.skipped, ar?"صف فارغ":"empty rows", SC.abroad]].map(([n,l,c],i)=>(
+                  <div key={i} style={{background:"#F7FAF9",border:`1px solid ${TOK.line}`,borderRadius:10,padding:"9px 13px",minWidth:96}}>
+                    <div style={{...NUM,fontSize:21,fontWeight:600,color:c}}>{n}</div>
+                    <div style={{fontSize:11,color:TOK.ink2,marginTop:1}}>{l}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{fontSize:11,fontWeight:600,color:TOK.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8}}>{ar?"كيف تم توزيع الأعمدة":"How columns were mapped"}</div>
+              <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"2px 16px",marginBottom:16}}>
+                {XL_FIELDS.map(([f])=>importData.mapping[f] ? (
+                  <div key={f} style={{display:"flex",alignItems:"center",gap:8,fontSize:12.5,padding:"6px 0",borderBottom:"1px solid #F2F6F4"}}>
+                    <span style={{color:TOK.ink,fontWeight:600,minWidth:104,flexShrink:0}}>{flabel[f]}</span>
+                    <Icon name="arrowLeft" size={13} color={TOK.muted}/>
+                    <span style={{color:TOK.ink2,fontFamily:TOK.mono,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{importData.mapping[f]}</span>
+                  </div>
+                ):null)}
+              </div>
+              {importData.unmatched.length>0 && (
+                <div style={{marginBottom:16,fontSize:12,color:TOK.muted,background:"#F7FAF9",border:`1px solid ${TOK.line}`,borderRadius:8,padding:"8px 12px"}}>
+                  {ar?"أعمدة لم تُستخدم: ":"Ignored columns: "}<span style={{fontFamily:TOK.mono,color:TOK.ink2}}>{importData.unmatched.join(", ")}</span>
+                </div>
+              )}
+
+              <div style={{fontSize:11,fontWeight:600,color:TOK.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8}}>{ar?`معاينة (أول ${Math.min(6,importData.records.length)})`:`Preview (first ${Math.min(6,importData.records.length)})`}</div>
+              <div style={{overflowX:"auto",border:`1px solid ${TOK.line}`,borderRadius:10}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:640}}>
+                  <thead><tr style={{background:"#F1F6F4"}}>
+                    {[ar?"الكود":"Code",ar?"المريض":"Patient",ar?"الفحص":"Test",ar?"المعمل":"Lab",ar?"التاريخ":"Date",ar?"الحالة":"Status",ar?"السعر":"Price",ar?"الدفع":"Pay"].map((h,i)=>(
+                      <th key={i} style={{padding:"8px 10px",textAlign:"start",color:TOK.ink2,fontWeight:600,fontSize:10.5,textTransform:"uppercase",letterSpacing:"0.3px",whiteSpace:"nowrap"}}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {importData.records.slice(0,6).map((r,i)=>(
+                      <tr key={i} style={{borderTop:`1px solid ${TOK.line}`,background:i%2?"#F7FAF9":"#fff"}}>
+                        <td style={{padding:"7px 10px",...NUM,color:TOK.ink2,whiteSpace:"nowrap"}}>{r.sampleCode||"—"}</td>
+                        <td style={{padding:"7px 10px",fontWeight:600,color:TOK.ink,whiteSpace:"nowrap"}}>{r.patientName||"—"}</td>
+                        <td style={{padding:"7px 10px",color:TOK.ink2,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.testType||"—"}</td>
+                        <td style={{padding:"7px 10px",color:TOK.ink2,whiteSpace:"nowrap"}}>{r.externalLab||"—"}</td>
+                        <td style={{padding:"7px 10px",...NUM,color:TOK.ink2,whiteSpace:"nowrap"}}>{r.collectDate||"—"}</td>
+                        <td style={{padding:"7px 10px"}}><span style={{background:(SC[r.status]||"#888")+"18",color:SC[r.status]||TOK.ink2,borderRadius:20,padding:"2px 9px",fontSize:10.5,fontWeight:600,whiteSpace:"nowrap"}}>{t.statuses[r.status]||r.status}</span></td>
+                        <td style={{padding:"7px 10px",...NUM,color:TOK.primary,fontWeight:600,whiteSpace:"nowrap"}}>{fmt(r.salePrice)}</td>
+                        <td style={{padding:"7px 10px"}}><span style={{color:PC[r.paymentStatus]||TOK.ink2,fontWeight:600,fontSize:11}}>{t.payStatus[r.paymentStatus]||r.paymentStatus}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{padding:"14px 20px",borderTop:`1px solid ${TOK.line}`,display:"flex",justifyContent:"flex-end",gap:10}}>
+              <button onClick={()=>setImportData(null)} style={{background:"transparent",color:"#888",border:"1px solid #e5e5e5",borderRadius:8,padding:"10px 20px",cursor:"pointer",fontSize:14}}>{ar?"إلغاء":"Cancel"}</button>
+              <button onClick={confirmImport} disabled={importing} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",cursor:importing?"default":"pointer",fontSize:14,fontWeight:700,display:"inline-flex",alignItems:"center",gap:7,opacity:importing?0.7:1}}>
+                <Icon name="check" size={15} color="#fff"/> {importing?(ar?"جارٍ...":"Importing..."):(ar?`استيراد ${importData.records.length}`:`Import ${importData.records.length}`)}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:10}}>
         <h2 style={{color:TOK.ink,fontSize:mob?18:22,margin:0,fontWeight:700}}>{t.nav.samples} <span style={{...NUM,color:TOK.muted,fontWeight:500,fontSize:mob?15:18}}>({samples.length})</span></h2>
         <div style={{display:"flex",gap:8,flexShrink:0}}>
