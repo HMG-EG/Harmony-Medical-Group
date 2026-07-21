@@ -56,6 +56,9 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
     }
+    /* Loading skeletons */
+    @keyframes hmgShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    .hmg-skel { background: linear-gradient(90deg, #EAF0EE 25%, #F3F7F5 37%, #EAF0EE 63%); background-size: 200% 100%; animation: hmgShimmer 1.3s ease-in-out infinite; border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -400,6 +403,7 @@ const ICON_PATHS = {
   chevronUp:`<polyline points="18 15 12 9 6 15"/>`,
   chevronDown:`<polyline points="6 9 12 15 18 9"/>`,
   arrowLeft:`<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>`,
+  info:`<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>`,
 };
 const Icon = ({name, size=16, stroke=2, color="currentColor", style}) => (
   React.createElement("svg", {
@@ -531,6 +535,75 @@ const smartParseExcel = (rows) => {
   });
   return { records, mapping, unmatched, headers, skipped };
 };
+
+// ─── Toast + confirm system (replaces native alert / confirm) ─────────────────
+const _toastSubs = new Set();
+let _toastSeq = 0;
+const toast = (message, type="success", duration=3800) => {
+  const item = { id: ++_toastSeq, message, type, duration };
+  _toastSubs.forEach(fn => fn(item));
+  return item.id;
+};
+const _confirmSubs = new Set();
+const confirmDialog = (opts={}) => new Promise(resolve => {
+  const o = typeof opts === "string" ? { message: opts } : opts;
+  if (!_confirmSubs.size) { resolve(window.confirm(o.message || "")); return; } // safety fallback
+  _confirmSubs.forEach(fn => fn({ ...o, resolve }));
+});
+function ToastHost({ lang }) {
+  const ar = lang === "ar";
+  const [items, setItems] = React.useState([]);
+  const [confirmState, setConfirmState] = React.useState(null);
+  React.useEffect(() => {
+    const onToast = (item) => {
+      setItems(list => [...list, item]);
+      if (item.duration) setTimeout(() => setItems(list => list.filter(x => x.id !== item.id)), item.duration);
+    };
+    const onConfirm = (opts) => setConfirmState(opts);
+    _toastSubs.add(onToast); _confirmSubs.add(onConfirm);
+    return () => { _toastSubs.delete(onToast); _confirmSubs.delete(onConfirm); };
+  }, []);
+  const remove = id => setItems(list => list.filter(x => x.id !== id));
+  const closeConfirm = (val) => { if (confirmState && confirmState.resolve) confirmState.resolve(val); setConfirmState(null); };
+  const CFG = {
+    success:{ c:"#0F8A5F", bg:"#E1F5EE", icon:"checkCircle" },
+    error:  { c:"#C7362F", bg:"#FCEBEB", icon:"alert" },
+    warning:{ c:"#B26B00", bg:"#FAEEDA", icon:"alert" },
+    info:   { c:"#2563EB", bg:"#E6F1FB", icon:"info" },
+  };
+  return (
+    <>
+      <div style={{position:"fixed",top:70,insetInlineEnd:16,zIndex:2000,display:"flex",flexDirection:"column",gap:10,width:"min(360px,calc(100vw - 32px))",pointerEvents:"none"}}>
+        {items.map(it => { const cfg = CFG[it.type] || CFG.success; return (
+          <div key={it.id} className="hmg-fade" style={{pointerEvents:"auto",background:"#fff",borderRadius:12,borderInlineStart:`4px solid ${cfg.c}`,boxShadow:"0 8px 28px rgba(16,32,30,0.16)",padding:"12px 14px",display:"flex",alignItems:"flex-start",gap:10}}>
+            <span style={{background:cfg.bg,borderRadius:8,width:28,height:28,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name={cfg.icon} size={16} color={cfg.c}/></span>
+            <span style={{flex:1,fontSize:13,color:"#10201E",fontWeight:500,lineHeight:1.45,paddingTop:3,wordBreak:"break-word"}}>{it.message}</span>
+            <button onClick={()=>remove(it.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#aaa",padding:2,display:"inline-flex",flexShrink:0}}><Icon name="x" size={15}/></button>
+          </div>
+        );})}
+      </div>
+      {confirmState && (
+        <div style={{position:"fixed",inset:0,background:"rgba(16,32,30,0.45)",zIndex:2001,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>closeConfirm(false)}>
+          <div onClick={e=>e.stopPropagation()} className="hmg-fade" dir={ar?"rtl":"ltr"} style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:400,boxShadow:"0 24px 60px rgba(0,0,0,0.28)",overflow:"hidden",fontFamily:TOK.sans}}>
+            <div style={{padding:"22px 22px 8px",display:"flex",gap:14}}>
+              <span style={{background:confirmState.danger?"#FCEBEB":"#E1F5EE",borderRadius:12,width:44,height:44,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <Icon name={confirmState.danger?"alert":"info"} size={22} color={confirmState.danger?"#C7362F":"#0F6E56"}/>
+              </span>
+              <div style={{minWidth:0,flex:1}}>
+                {confirmState.title && <div style={{fontWeight:700,fontSize:16,color:"#10201E",marginBottom:4}}>{confirmState.title}</div>}
+                <div style={{fontSize:14,color:"#5B6B67",lineHeight:1.55}}>{confirmState.message}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10,padding:"16px 22px 20px"}}>
+              <button onClick={()=>closeConfirm(false)} style={{background:"transparent",color:"#555",border:"1px solid #e5e5e5",borderRadius:9,padding:"10px 18px",cursor:"pointer",fontSize:14,fontWeight:500}}>{confirmState.cancelText||(ar?"إلغاء":"Cancel")}</button>
+              <button onClick={()=>closeConfirm(true)} style={{background:confirmState.danger?"#C7362F":"#0F6E56",color:"#fff",border:"none",borderRadius:9,padding:"10px 20px",cursor:"pointer",fontSize:14,fontWeight:700}}>{confirmState.confirmText||(ar?"تأكيد":"Confirm")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 
 
@@ -1236,7 +1309,7 @@ function SampleCard({ s, t, onEdit, onDelete }) {
 }
 
 // ─── SamplesPage ──────────────────────────────────────────────────────────────
-function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang, isAdmin }) {
+function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang, isAdmin, loading }) {
   const mob = useIsMobile();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -1268,7 +1341,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
   const handleExcelUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (typeof XLSX === "undefined") { alert(ar?"مكتبة Excel لم تحمّل بعد، حاول مرة أخرى":"Excel library not loaded yet, try again"); return; }
+    if (typeof XLSX === "undefined") { toast(ar?"مكتبة Excel لم تحمّل بعد، حاول مرة أخرى":"Excel library not loaded yet, try again","error"); return; }
     setImporting(true);
     try {
       const buf = await file.arrayBuffer();
@@ -1276,10 +1349,10 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
       const parsed = smartParseExcel(rows);
-      if (!parsed.records.length) { alert(ar?"لم يتم العثور على بيانات صالحة":"No valid rows found"); setImporting(false); if (fileRef.current) fileRef.current.value = ""; return; }
+      if (!parsed.records.length) { toast(ar?"لم يتم العثور على بيانات صالحة":"No valid rows found","warning"); setImporting(false); if (fileRef.current) fileRef.current.value = ""; return; }
       setImportData({ ...parsed, fileName: file.name });
     } catch(err) {
-      alert((ar?"خطأ في قراءة الملف: ":"Error reading file: ")+err.message);
+      toast((ar?"خطأ في قراءة الملف: ":"Error reading file: ")+err.message,"error");
     }
     setImporting(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -1303,7 +1376,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
     const count = finalized.length;
     setImportData(null);
     setImporting(false);
-    alert((ar?"تم استيراد ":"Imported ")+count+(ar?" عينة":" samples"));
+    toast((ar?"تم استيراد ":"Imported ")+count+(ar?" عينة":" samples"),"success");
   };
   const flabel = { sampleCode:ar?"كود":"Code", patientName:ar?"المريض":"Patient", age:ar?"العمر":"Age", gender:ar?"النوع":"Gender", doctor:ar?"الطبيب":"Doctor", hospital:ar?"العميل":"Client", testType:ar?"الفحص":"Test", externalLab:ar?"المعمل":"Lab", shipmentNumber:ar?"الشحنة":"Shipment", collectDate:ar?"تاريخ الاستلام":"Receiving date", sentDate:ar?"تاريخ الإرسال":"Sent date", travelDate:ar?"تاريخ السفر":"Travel date", status:ar?"الحالة":"Status", salePrice:ar?"السعر":"Price", labCost:ar?"التكلفة":"Cost", deposit:ar?"العربون":"Deposit", paymentStatus:ar?"الدفع":"Payment", notes:ar?"ملاحظات":"Notes" };
 
@@ -1439,11 +1512,36 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
         <span style={{fontSize:12,color:"#aaa"}}>{filtered.length} {ar?"عينة":"samples"}</span>
       </div>
 
-      {filtered.length===0 && (
-        <div style={{textAlign:"center",padding:40,color:"#111"}}>{t.table.noData}</div>
+      {loading && (mob
+        ? [0,1,2,3].map(i=>(
+            <div key={i} style={{background:TOK.surface,border:`1px solid ${TOK.line}`,borderRadius:12,padding:16,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:12,gap:10}}>
+                <div style={{flex:1}}><div className="hmg-skel" style={{height:14,width:"55%",marginBottom:8}}/><div className="hmg-skel" style={{height:11,width:"38%"}}/></div>
+                <div className="hmg-skel" style={{height:22,width:70,borderRadius:20}}/>
+              </div>
+              <div className="hmg-skel" style={{height:34,width:"100%"}}/>
+            </div>
+          ))
+        : (
+          <div style={{background:TOK.surface,borderRadius:12,border:`1px solid ${TOK.line}`,overflow:"hidden"}}>
+            {[0,1,2,3,4,5].map(i=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:16,padding:"14px",borderTop:i>0?`1px solid ${TOK.line}`:"none"}}>
+                <div className="hmg-skel" style={{height:12,width:72,flexShrink:0}}/>
+                <div className="hmg-skel" style={{height:12,flex:1,maxWidth:160}}/>
+                <div className="hmg-skel" style={{height:12,width:90}}/>
+                <div className="hmg-skel" style={{height:22,width:84,borderRadius:6,marginInlineStart:"auto",flexShrink:0}}/>
+                <div className="hmg-skel" style={{height:12,width:56,flexShrink:0}}/>
+              </div>
+            ))}
+          </div>
+        )
       )}
 
-      {mob ? (
+      {!loading && filtered.length===0 && (
+        <div style={{textAlign:"center",padding:40,color:TOK.muted}}>{t.table.noData}</div>
+      )}
+
+      {!loading && (mob ? (
         filtered.map(s=><SampleCard key={s.id} s={s} t={t} onEdit={onEdit} onDelete={onDelete}/>)
       ) : (
         <div style={{background:TOK.surface,borderRadius:12,border:`1px solid ${TOK.line}`,overflow:"auto"}}>
@@ -1518,7 +1616,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
             </tbody>
           </table>
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -2130,7 +2228,7 @@ function ResultsPage({ t, samples, setSamples }) {
     const file = e.target.files[0];
     if (!file) return;
     // Allow any file type
-    if (file.size > 10*1024*1024) { alert(ar?"الملف أكبر من 10MB":"File exceeds 10MB limit"); return; }
+    if (file.size > 10*1024*1024) { toast(ar?"الملف أكبر من 10MB":"File exceeds 10MB limit","error"); return; }
     const reader = new FileReader();
     reader.onload = (ev) => { setPdfData(ev.target.result); setPdfName(file.name); };
     reader.readAsDataURL(file);
@@ -2215,7 +2313,7 @@ function ResultsPage({ t, samples, setSamples }) {
     const handleEditFile = (e) => {
       const file = e.target.files[0];
       if(!file) return;
-      if(file.size>10*1024*1024){alert(ar?"الملف أكبر من 10MB":"File exceeds 10MB");return;}
+      if(file.size>10*1024*1024){toast(ar?"الملف أكبر من 10MB":"File exceeds 10MB","error");return;}
       const reader = new FileReader();
       reader.onload = ev=>{setEditPdf(ev.target.result);setEditPdfName(file.name);};
       reader.readAsDataURL(file);
@@ -2503,7 +2601,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
   };
 
   const deleteShipment = async (shipNum) => {
-    if (!window.confirm(ar?`هل تريد حذف الشحنة ${shipNum}؟`:`Delete shipment ${shipNum}?`)) return;
+    if (!(await confirmDialog({message:ar?`هل تريد حذف الشحنة ${shipNum}؟`:`Delete shipment ${shipNum}?`, danger:true, confirmText:ar?"حذف":"Delete"}))) return;
     const changed = [];
     setSamples(p => {
       const next = p.map(s => {
@@ -3050,7 +3148,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
   };
 
   const exportInvoiceExcel = (name, items) => {
-    if (typeof XLSX === "undefined") { alert(ar?"مكتبة Excel لم تحمّل بعد":"Excel library not loaded yet"); return; }
+    if (typeof XLSX === "undefined") { toast(ar?"مكتبة Excel لم تحمّل بعد":"Excel library not loaded yet","error"); return; }
     const revenue = items.reduce((a,s)=>a+Number(s.salePrice||0),0);
     const rows = items.map((s,i)=>({
       "#": i+1,
@@ -3395,13 +3493,13 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
     setMsg({text:"",type:""});
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const u = users.find(x => x.username === editingUser);
     if (!u) return;
 
     // Validate old password (only if not admin editing other user)
     const isEditingSelf = currentUser.username === editingUser;
-    if (isEditingSelf && form.oldPassword !== u.password) {
+    if (isEditingSelf && !(await passwordMatches(form.oldPassword, u.password))) {
       showMsg(ar?"كلمة المرور الحالية غير صحيحة":"Current password is incorrect", "error"); return;
     }
 
@@ -3421,10 +3519,11 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
       showMsg(ar?"كلمة المرور الجديدة غير متطابقة":"New passwords don't match","error"); return;
     }
 
+    const newPassHash = newPass ? await hashPassword(newPass) : null;
     const updated = users.map(x => x.username===editingUser ? {
       ...x,
       username: newUsername,
-      password: newPass || x.password,
+      password: newPassHash || x.password,
     } : x);
 
     USERS = updated;
@@ -3453,7 +3552,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
     if (users.find(x=>x.username.toLowerCase()===uname.toLowerCase())) { showMsg(ar?"اسم المستخدم موجود بالفعل":"Username already exists","error"); return; }
     if (!newForm.password || newForm.password.length < 6) { showMsg(ar?"كلمة المرور يجب أن تكون 6 أحرف على الأقل":"Password must be at least 6 characters","error"); return; }
     if (newForm.password !== newForm.confirm) { showMsg(ar?"كلمتا المرور غير متطابقتين":"Passwords don't match","error"); return; }
-    const updated = [...users, { username: uname, password: newForm.password, role: newForm.role }];
+    const updated = [...users, { username: uname, password: await hashPassword(newForm.password), role: newForm.role }];
     USERS = updated;
     setUsers(updated);
     saveUsers(updated).then(()=>setSupaStatus("connected")).catch(()=>setSupaStatus("save failed"));
@@ -3468,7 +3567,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
     if (username === currentUser.username) {
       showMsg(ar?"لا يمكنك حذف حسابك الحالي":"Cannot delete your own account", "error"); return;
     }
-    if (!window.confirm(ar?`هل أنت متأكد من حذف المستخدم "${username}"؟`:`Delete user "${username}"?`)) return;
+    if (!(await confirmDialog({message:ar?`هل أنت متأكد من حذف المستخدم "${username}"؟`:`Delete user "${username}"?`, danger:true, confirmText:ar?"حذف":"Delete"}))) return;
     const updated = users.filter(u => u.username !== username);
     USERS = updated;
     await saveUsers(updated);
@@ -3860,6 +3959,24 @@ const loadUsers = () => {
     return DEFAULT_USERS;
   } catch { return DEFAULT_USERS; }
 };
+// ─── Password hashing (SHA-256 via Web Crypto) ────────────────────────────────
+// Passwords are stored hashed, never in plain text. Login stays backward
+// compatible: a legacy plain-text password still authenticates once, then is
+// transparently upgraded to a hash — so no one is locked out during migration.
+const PW_SALT = "hmg::v1::a7Q2p9Zx";
+const hashPassword = async (pw) => {
+  try {
+    if (!(typeof crypto !== "undefined" && crypto.subtle)) return pw; // insecure context — leave as-is
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(PW_SALT + "::" + pw));
+    return "h1$" + [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+  } catch { return pw; }
+};
+const isHashed = (stored) => typeof stored === "string" && stored.startsWith("h1$");
+const passwordMatches = async (pw, stored) => {
+  if (stored == null) return false;
+  if (isHashed(stored)) return (await hashPassword(pw)) === stored;
+  return pw === stored; // legacy plain-text
+};
 const saveUsers = (users) => saveToCloud("users", users);
 const loadUsersFromSupabase = async () => {
   const users = await loadFromCloud("users");
@@ -3889,9 +4006,15 @@ function LoginPage({ onLogin, lang, setLang, onSignUp, onForgot }) {
     // Try loading from Supabase first for latest users
     const freshUsers = await loadUsersFromSupabase();
     USERS = freshUsers || loadUsers();
-    const user = USERS.find(u => u.username === username.trim() && u.password === password);
-    if (user) {
-      onLogin(user);
+    const candidate = USERS.find(u => u.username === username.trim());
+    const ok = candidate && await passwordMatches(password, candidate.password);
+    if (ok) {
+      // Migrate legacy plain-text passwords to a hash on first successful login
+      if (!isHashed(candidate.password)) {
+        candidate.password = await hashPassword(password);
+        try { saveUsers(USERS); localStorage.setItem("harmony_users", JSON.stringify(USERS)); } catch {}
+      }
+      onLogin(candidate);
     } else {
       setError(ar ? "اسم المستخدم أو كلمة المرور غير صحيحة" : "Incorrect username or password");
     }
@@ -4166,7 +4289,7 @@ function TestsPage({ t, isAdmin }) {
               const v = await loadExtraTests();
               setExtraTests(v);
               setLoadingTests(false);
-              alert(`Loaded ${v.length} extra tests from Supabase`);
+              toast(`Loaded ${v.length} extra tests from Supabase`,"success");
             }} style={{background:"#f5f5f7",color:"#555",border:"1px solid #e5e5e5",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:12,display:"inline-flex",alignItems:"center",gap:6}}>
               <Icon name="refresh" size={13}/> {ar?"تحديث":"Reload"}
             </button>
@@ -4177,7 +4300,7 @@ function TestsPage({ t, isAdmin }) {
                 setLoadingTests(true);
                 // Fetch the tests data from the JSON file hosted on Supabase storage or CDN
                 const r2 = await fetch("https://huupoodjnmythfgflzoz.supabase.co/storage/v1/object/public/tests/extra_tests.json");
-                if(!r2.ok){ alert("File not found. Please upload extra_tests.json to Supabase Storage first."); setLoadingTests(false); return; }
+                if(!r2.ok){ toast("File not found. Please upload extra_tests.json to Supabase Storage first.","error"); setLoadingTests(false); return; }
                 const data = await r2.json();
                 // Save to app_settings
                 await fetch("https://huupoodjnmythfgflzoz.supabase.co/rest/v1/app_settings",{
@@ -4188,7 +4311,7 @@ function TestsPage({ t, isAdmin }) {
                 const loaded = await loadExtraTests();
                 setExtraTests(loaded);
                 setLoadingTests(false);
-              } catch(e){ console.error(e); setLoadingTests(false); alert("Error: "+e.message); }
+              } catch(e){ console.error(e); setLoadingTests(false); toast("Error: "+e.message,"error"); }
             }}
               style={{background:"#B26B00",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,fontWeight:600,display:"inline-flex",alignItems:"center",gap:7}}>
               <Icon name="cloud" size={15} color="#fff"/> {ar?"تحميل فحوصات India & Greece":"Upload India & Greece Tests"}
@@ -4587,8 +4710,8 @@ function ClientsBookPage({ t, isAdmin }) {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm(ar?"هل تريد حذف هذا العميل؟":"Delete this client?")) return;
+  const handleDelete = async (id) => {
+    if (!(await confirmDialog({message:ar?"هل تريد حذف هذا العميل؟":"Delete this client?", danger:true, confirmText:ar?"حذف":"Delete"}))) return;
     saveClients(clients.filter(c => c.id !== id));
   };
 
@@ -4756,15 +4879,16 @@ function ForgotPasswordPage({ onBack, lang, setLang }) {
 
   const handleReset = async () => {
     if (!username.trim()) { setMsg({text:ar?"أدخل اسم المستخدم":"Enter your username",type:"error"}); return; }
-    const users = loadUsers();
+    const users = (await loadUsersFromSupabase()) || loadUsers();
     const user = users.find(u => u.username === username.trim());
-    if (!user) { setMsg({text:ar?"اسم المستخدم غير موجود":"Username not found",type:"error"}); return; }
-    // Show the password (in a real app, send email)
-    setMsg({text:`${ar?"كلمة المرور الحالية:":"Current password:"} ${user.password}`, type:"success"});
+    // Same response whether or not the account exists (don't leak which usernames are valid)
+    setMsg({text: ar
+      ? "لأسباب أمنية لا يمكن استرجاع كلمة المرور. يرجى التواصل مع مسؤول النظام لإعادة تعيينها من الإعدادات."
+      : "For security, passwords can't be recovered. Please ask your administrator to reset it from Settings.", type:"success"});
   };
 
   return (
-    <div dir={ar?"rtl":"ltr"} style={{fontFamily:ar?"'Cairo','Segoe UI',sans-serif":"'Inter','Segoe UI',sans-serif",minHeight:"100vh",background:"linear-gradient(135deg,#2d2d2d 0%,#111111 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div dir={ar?"rtl":"ltr"} style={{fontFamily:TOK.sans,minHeight:"100vh",background:"radial-gradient(1200px 600px at 50% -10%, #12836A 0%, transparent 60%), linear-gradient(165deg, #0B5442 0%, #08302A 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
       <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")} style={{position:"fixed",top:16,insetInlineEnd:16,background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>
         <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon name="globe" size={14}/> {ar?"English":"عربي"}</span>
@@ -4825,7 +4949,7 @@ function SignUpPage({ onSignUp, onBack, lang, setLang }) {
       setLoading(false); return;
     }
     // Create new user with role "user"
-    const newUser = { username: form.username.trim(), password: form.password, role: "user" };
+    const newUser = { username: form.username.trim(), password: await hashPassword(form.password), role: "user" };
     const updated = [...existing, newUser];
     USERS = updated;
     await saveUsers(updated);
@@ -4834,7 +4958,7 @@ function SignUpPage({ onSignUp, onBack, lang, setLang }) {
   };
 
   return (
-    <div dir={ar?"rtl":"ltr"} style={{fontFamily:ar?"'Cairo','Segoe UI',sans-serif":"'Inter','Segoe UI',sans-serif",minHeight:"100vh",background:"linear-gradient(135deg,#2d2d2d 0%,#111111 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div dir={ar?"rtl":"ltr"} style={{fontFamily:TOK.sans,minHeight:"100vh",background:"radial-gradient(1200px 600px at 50% -10%, #12836A 0%, transparent 60%), linear-gradient(165deg, #0B5442 0%, #08302A 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
       <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")} style={{position:"fixed",top:16,insetInlineEnd:16,background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>
         <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon name="globe" size={14}/> {ar?"English":"عربي"}</span>
@@ -4924,6 +5048,7 @@ function App() {
     } catch { return []; }
   });
   const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | ok | error
+  const [initialLoad, setInitialLoad] = useState(true);
 
   // Wrap setSamples to also sync to Supabase
   const setSamples = React.useCallback((updater) => {
@@ -5004,6 +5129,7 @@ function App() {
       });
       if (!silent) setSyncStatus("ok");
     } catch { if (!silent) setSyncStatus("ok"); }
+    finally { setInitialLoad(false); }
   };
 
   useEffect(() => {
@@ -5052,6 +5178,7 @@ function App() {
 
   const overdue = samples.filter(s => s.status==="overdue" || (["sent","abroad"].includes(s.status) && isOverdue(s)));
   const totalRevenue = samples.reduce((a,s)=>a+Number(s.salePrice||0),0);
+  const loading = initialLoad && samples.length === 0; // first Supabase load, no cached data yet
 
   const stats = [
     {l:t.dash.total, v:samples.length, c:TOK.primary},
@@ -5085,7 +5212,7 @@ function App() {
   };
   const handleEdit = (id) => { setEditTarget(id); setTab("form"); setMobileMenuOpen(false); };
   const handleClearData = async () => {
-    if(window.confirm(lang==="ar"?"هل أنت متأكد من حذف كل البيانات؟ لا يمكن التراجع عن هذا الإجراء":"Clear all data? This cannot be undone.")) {
+    if(await confirmDialog({title:lang==="ar"?"مسح كل البيانات؟":"Clear all data?", message:lang==="ar"?"سيتم حذف جميع العينات نهائياً. لا يمكن التراجع عن هذا الإجراء.":"All samples will be permanently deleted. This cannot be undone.", danger:true, confirmText:lang==="ar"?"مسح الكل":"Clear all"})) {
       setSamples([]);
       try { localStorage.removeItem("harmony_samples"); } catch {}
       try { await fetch(`${SUPA_URL}/rest/v1/samples?id=neq.x`, { method: "DELETE", headers: SUPA_HEADERS }); } catch {}
@@ -5106,7 +5233,7 @@ function App() {
   };
 
   const handleDelete = async (id) => {
-    if(window.confirm(t.confirm)) {
+    if(await confirmDialog({message:t.confirm, danger:true, confirmText:lang==="ar"?"حذف":"Delete"})) {
       setSamples(p => {
         const updated = p.filter(s=>s.id!==id);
         try { localStorage.setItem("harmony_samples", JSON.stringify(updated)); } catch {}
@@ -5162,6 +5289,7 @@ function App() {
 
   return (
     <div dir={t.dir} style={{fontFamily:TOK.sans,minHeight:"100vh",background:TOK.canvas,color:TOK.ink}}>
+      <ToastHost lang={lang}/>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 
       {/* ── Topbar ── */}
@@ -5188,12 +5316,12 @@ function App() {
           {syncStatus==="ok" && <span title="Synced" style={{display:"inline-flex",color:"#0F8A5F"}}><Icon name="check" size={14} color="#0F8A5F"/></span>}
           <button onClick={()=>loadSamplesFromSupabase()} title={lang==="ar"?"تحديث":"Refresh"} style={{background:"transparent",border:"1px solid #e5e5e5",color:"#5B6B67",borderRadius:7,padding:"6px 9px",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name="refresh" size={15}/></button>
           {isAdmin && <button onClick={async()=>{
-            if(!window.confirm(lang==="ar"?"رفع كل العينات إلى السحابة؟":"Sync all samples to cloud?")) return;
+            if(!(await confirmDialog({message:lang==="ar"?"رفع كل العينات إلى السحابة؟":"Sync all samples to cloud?", confirmText:lang==="ar"?"رفع":"Sync"}))) return;
             setSyncStatus("syncing");
             const ok = await upsertSamples(samples);
             await flushPending();
             setSyncStatus("ok");
-            alert((lang==="ar"?"تم رفع ":"Synced ")+ok+"/"+samples.length);
+            toast((lang==="ar"?"تم رفع ":"Synced ")+ok+"/"+samples.length+(lang==="ar"?" عينة":" samples"),"success");
           }} title="Sync all to cloud" style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:7,padding:"6px 9px",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name="cloud" size={15} color="#fff"/></button>}
           <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")} style={{background:"#f5f5f7",border:"1px solid #e5e5e5",color:"#555",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:500,display:"inline-flex",alignItems:"center",gap:6}}>
             <Icon name="globe" size={14}/> {t.lang}
@@ -5427,12 +5555,12 @@ function App() {
                   return isRev ? (
                     <div key={i} style={{background:TOK.primary,borderRadius:12,padding:"14px 15px"}}>
                       <div style={{fontSize:11,color:"#9FE1CB",fontWeight:500}}>{s.l}</div>
-                      <div style={{...NUM,fontSize:mob?19:22,fontWeight:600,color:"#fff",marginTop:5}}>{s.v}</div>
+                      {loading ? <div className="hmg-skel" style={{height:mob?20:24,width:90,marginTop:8,background:"rgba(255,255,255,0.25)"}}/> : <div style={{...NUM,fontSize:mob?19:22,fontWeight:600,color:"#fff",marginTop:5}}>{s.v}</div>}
                     </div>
                   ) : (
                     <div key={i} style={{background:TOK.surface,border:`1px solid ${TOK.line}`,borderTop:`3px solid ${s.c}`,borderRadius:12,padding:"14px 15px"}}>
                       <div style={{fontSize:11,color:TOK.ink2,fontWeight:500}}>{s.l}</div>
-                      <div style={{...NUM,fontSize:mob?22:27,fontWeight:600,color:s.c,marginTop:5}}>{s.v}</div>
+                      {loading ? <div className="hmg-skel" style={{height:mob?24:30,width:52,marginTop:7}}/> : <div style={{...NUM,fontSize:mob?22:27,fontWeight:600,color:s.c,marginTop:5}}>{s.v}</div>}
                     </div>
                   );
                 })}
@@ -5442,7 +5570,19 @@ function App() {
                   <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon name="sample" size={17} color={TOK.primary}/> {t.nav.samples}</span>
                   <button onClick={()=>goTab("form")} style={{background:TOK.primary,color:"#fff",border:"none",borderRadius:8,padding:"7px 13px",cursor:"pointer",fontSize:12,fontWeight:600}}>+ {t.nav.newSample}</button>
                 </div>
-                {samples.slice(0,5).map((s,i)=>(
+                {loading
+                  ? [0,1,2,3].map(i=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderTop:i>0?"1px solid #F2F6F4":"none",gap:8}}>
+                      <div style={{minWidth:0,flex:1}}>
+                        <div className="hmg-skel" style={{height:12,width:"42%",marginBottom:7}}/>
+                        <div className="hmg-skel" style={{height:10,width:"28%"}}/>
+                      </div>
+                      <div className="hmg-skel" style={{height:22,width:74,borderRadius:20}}/>
+                    </div>
+                  ))
+                  : samples.length===0
+                  ? <div style={{padding:"28px 16px",textAlign:"center",color:TOK.muted,fontSize:13}}>{lang==="ar"?"لا توجد عينات بعد":"No samples yet"}</div>
+                  : samples.slice(0,5).map((s,i)=>(
                   <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderTop:i>0?"1px solid #F2F6F4":"none",gap:8}}>
                     <div style={{minWidth:0}}>
                       <div style={{color:TOK.ink,fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
@@ -5456,7 +5596,7 @@ function App() {
           )}
 
           {tab==="form" && <SampleForm t={t} samples={samples} editTarget={editTarget} onSave={handleSave} onCancel={()=>{navigateTo("samples");setEditTarget(null);}} isAdmin={isAdmin}/>}
-          {tab==="samples" && <SamplesPage t={t} samples={samples} setSamples={setSamples} onEdit={handleEdit} onDelete={handleDelete} onAddNew={()=>{setEditTarget(null);setTab("form");}} lang={lang} isAdmin={isAdmin}/>}
+          {tab==="samples" && <SamplesPage t={t} samples={samples} setSamples={setSamples} onEdit={handleEdit} onDelete={handleDelete} onAddNew={()=>{setEditTarget(null);setTab("form");}} lang={lang} isAdmin={isAdmin} loading={loading}/>}
           {tab==="accounting" && isAdmin && <Accounting t={t} samples={samples} setSamples={setSamples}/>}
           {tab==="clients" && <ClientsPage t={t} samples={samples} isAdmin={isAdmin}/>}
           {tab==="results" && <ResultsPage t={t} samples={samples} setSamples={setSamples}/>}
