@@ -19,9 +19,9 @@
     /* ── Harmony design tokens (light default) ───────────────────── */
     :root {
       --hmg-ink:#10201E; --hmg-ink2:#5B6B67; --hmg-muted:#8A9793;
-      --hmg-canvas:#F4F7F5; --hmg-surface:#FFFFFF; --hmg-surface-2:#FAFCFB; --hmg-subtle:#F1F6F4;
-      --hmg-primary:#0F6E56; --hmg-primary-dark:#0B5442; --hmg-tint:#E1F5EE;
-      --hmg-line:#E4ECE9;
+      --hmg-canvas:#F4F7F5; --hmg-surface:#FFFFFF; --hmg-surface-2:#FAFCFB; --hmg-subtle:var(--hmg-subtle);
+      --hmg-primary:#0F6E56; --hmg-primary-dark:#0B5442; --hmg-tint:var(--hmg-tint);
+      --hmg-line:var(--hmg-line);
       --hmg-skel-a:#EAF0EE; --hmg-skel-b:#F4F8F6;
       --hmg-bg-danger:#FCEBEB; --hmg-bg-warning:#FAEEDA; --hmg-bg-info:#E6F1FB; --hmg-text-danger:#A32D2D;
       --hmg-sans:'IBM Plex Sans','IBM Plex Sans Arabic','Cairo',system-ui,sans-serif;
@@ -53,7 +53,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--hmg-canvas); font-family: var(--hmg-sans); color: var(--hmg-ink); -webkit-font-smoothing:antialiased; }
     #loading { display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;color:#5B6B67; }
-    .spinner { width:40px;height:40px;border:3px solid #E4ECE9;border-top-color:#0F6E56;border-radius:50%;animation:spin 0.8s linear infinite; }
+    .spinner { width:40px;height:40px;border:3px solid var(--hmg-line);border-top-color:#0F6E56;border-radius:50%;animation:spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     /* Tabular monospace for figures — the instrument-readout signature */
     .hmg-num { font-family: var(--hmg-mono); font-variant-numeric: tabular-nums; letter-spacing:-0.2px; }
@@ -770,9 +770,9 @@ function CustomSelect({ value, onChange, options, placeholder, error, style }) {
           padding:"11px 14px", background:"var(--hmg-surface-2)",
           border:`1.5px solid ${error?"#ef4444":open?TOK.primary:"var(--hmg-line)"}`,
           borderRadius: open?"8px 8px 0 0":8, cursor:"pointer", fontSize:14,
-          color: value?"#111":"#aaa", textAlign:"start",
+          color: value?"var(--hmg-ink)":"var(--hmg-muted)", textAlign:"start",
           transition:"border-color .15s", boxSizing:"border-box",
-          boxShadow: open?"0 -2px 0 #111 inset":"none",
+          boxShadow: open?"0 -2px 0 var(--hmg-primary) inset":"none",
         }}>
         <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -783,10 +783,10 @@ function CustomSelect({ value, onChange, options, placeholder, error, style }) {
       {open && (
         <div style={{
           position:"absolute", top:"100%", insetInlineStart:0, width:"100%",
-          background:"var(--hmg-surface)", border:"1.5px solid #111", borderTop:"none",
+          background:"var(--hmg-surface)", border:`1.5px solid ${TOK.primary}`, borderTop:"none",
           borderRadius:"0 0 10px 10px", zIndex:999,
           maxHeight:220, overflowY:"auto", padding:"6px",
-          boxShadow:"0 8px 24px rgba(0,0,0,0.1)",
+          boxShadow:"0 8px 24px rgba(0,0,0,0.28)",
         }}>
           {options.map((o,i)=>{
             const val = o.value!==undefined ? o.value : o;
@@ -797,7 +797,7 @@ function CustomSelect({ value, onChange, options, placeholder, error, style }) {
                 style={{
                   padding:"9px 12px", borderRadius:7, cursor:"pointer",
                   fontSize:13, fontWeight:isSel?600:400,
-                  color:isSel?"#fff":"#333",
+                  color:isSel?"#fff":"var(--hmg-ink)",
                   background:isSel?TOK.primary:"transparent",
                   boxShadow:isSel?"0 2px 8px rgba(0,0,0,0.15)":"none",
                   transition:"all .12s",
@@ -883,9 +883,9 @@ function SearchableSelect({ value, onChange, options, placeholder, error, allowC
               <div key={i} onMouseDown={() => select(opt)}
                 style={{
                   padding:"10px 14px", cursor:"pointer", fontSize:13,
-                  background: i===highlighted?"var(--hmg-subtle)":"#fff",
+                  background: i===highlighted?"var(--hmg-subtle)":"var(--hmg-surface)",
                   color:"var(--hmg-ink)", fontWeight: optVal===value?600:400,
-                  borderBottom: i<filtered.length-1?"1px solid #f5f5f5":"none"
+                  borderBottom: i<filtered.length-1?"1px solid var(--hmg-line)":"none"
                 }}
                 onMouseEnter={() => setHighlighted(i)}>
                 {optLbl}
@@ -895,8 +895,8 @@ function SearchableSelect({ value, onChange, options, placeholder, error, allowC
           })}
           {allowCustom && query.trim() && !filtered.map(o=>typeof o==="object"?o.label:o).includes(query.trim()) && (
             <div onMouseDown={() => select(query.trim())}
-              style={{padding:"10px 14px",cursor:"pointer",fontSize:13,color:"#0F6E56",
-                background:highlighted===filtered.length?"var(--hmg-subtle)":"#fff",
+              style={{padding:"10px 14px",cursor:"pointer",fontSize:13,color:"var(--hmg-primary)",
+                background:highlighted===filtered.length?"var(--hmg-subtle)":"var(--hmg-surface)",
                 borderTop:"1px solid var(--hmg-line)", fontWeight:500}}>
               + {dir==="rtl"?`إضافة "${query.trim()}" كعميل جديد`:`Add "${query.trim()}" as new client`}
             </div>
@@ -1056,7 +1056,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
         </div>
       )}
 
-      <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:16,padding:mob?20:32,boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
+      <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:16,padding:mob?20:32,boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
 
         {/* ── PATIENT ── */}
         <SecLabel title={t.form.sec1}/>
@@ -1272,7 +1272,7 @@ function SampleForm({ t, samples, editTarget, onSave, onCancel, isAdmin }) {
             {!!(f.salePrice||f.labCost) && (
               <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"1fr 1fr 1fr",gap:10,marginTop:16}}>
                 {[[t.form.margin,fmt(margin)+" EGP",margin>=0?"#111":"#ef4444"],[t.form.remaining,fmt(remaining)+" EGP","#111"],["Profit",fmt(margin)+" EGP","#111"]].map(([l,v,c],i)=>(
-                  <div key={i} style={{background:"var(--hmg-surface-2)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:10,padding:"12px 14px"}}>
+                  <div key={i} style={{background:"var(--hmg-surface-2)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:10,padding:"12px 14px"}}>
                     <div style={{fontSize:11,color:"var(--hmg-muted)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px"}}>{l}</div>
                     <div style={{fontSize:17,fontWeight:700,color:c}}>{v}</div>
                   </div>
@@ -1467,7 +1467,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
                   </tr></thead>
                   <tbody>
                     {importData.records.slice(0,6).map((r,i)=>(
-                      <tr key={i} style={{borderTop:`1px solid ${TOK.line}`,background:i%2?"var(--hmg-surface-2)":"#fff"}}>
+                      <tr key={i} style={{borderTop:`1px solid ${TOK.line}`,background:i%2?"var(--hmg-surface-2)":"var(--hmg-surface)"}}>
                         <td style={{padding:"7px 10px",...NUM,color:TOK.ink2,whiteSpace:"nowrap"}}>{r.sampleCode||"—"}</td>
                         <td style={{padding:"7px 10px",fontWeight:600,color:TOK.ink,whiteSpace:"nowrap"}}>{r.patientName||"—"}</td>
                         <td style={{padding:"7px 10px",color:TOK.ink2,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.testType||"—"}</td>
@@ -1588,7 +1588,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
               {filtered.map((s,i)=>{
                 const d=sampleAge(s);
                 return (
-                  <tr key={s.id} style={{borderTop:`1px solid ${TOK.line}`,background:i%2===0?"#ffffff":"var(--hmg-surface-2)"}}>
+                  <tr key={s.id} style={{borderTop:`1px solid ${TOK.line}`,background:i%2===0?"var(--hmg-surface)":"var(--hmg-surface-2)"}}>
                     <td style={{padding:"10px 12px",...NUM,color:TOK.ink2,whiteSpace:"nowrap"}}>{s.sampleCode}</td>
                     <td style={{padding:"10px 12px"}}>
                       <div style={{color:TOK.ink,fontWeight:600}}>{s.patientName}</div>
@@ -1609,7 +1609,7 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
                         return (
                           <div>
                             <div style={{...NUM,fontSize:12,fontWeight:600,color:clr,marginBottom:3}}>{d}/{tat.max}d</div>
-                            <div style={{background:"#EDF1EF",borderRadius:4,height:5,width:60,margin:"0 auto"}}>
+                            <div style={{background:"var(--hmg-line)",borderRadius:4,height:5,width:60,margin:"0 auto"}}>
                               <div style={{width:pct+"%",background:clr,borderRadius:4,height:5,transition:"width .3s"}}/>
                             </div>
                             <div style={{fontSize:10,color:TOK.muted,marginTop:2}}>{tat.tat}</div>
@@ -1678,7 +1678,7 @@ function Accounting({ t, samples, setSamples }) {
       <h2 style={{color:"var(--hmg-ink)",fontSize:mob?17:21,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px"}}>{t.accounting.title}</h2>
 
       {/* ── Filters ── */}
-      <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+      <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:12,alignItems:"end"}}>
           <div>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--hmg-ink2)",marginBottom:5}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"من":"From"}</label>
@@ -1717,7 +1717,7 @@ function Accounting({ t, samples, setSamples }) {
           [t.accounting.collected,fmt(collected),"#B26B00"],
           [t.accounting.remaining,fmt(revenue-collected),"#8b5cf6"],
         ].map(([l,v,c],i)=>(
-          <div key={i} style={{background:"var(--hmg-surface-2)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:11,padding:"14px",borderTop:`3px solid ${c}`}}>
+          <div key={i} style={{background:"var(--hmg-surface-2)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:11,padding:"14px",borderTop:`3px solid ${c}`}}>
             <div style={{fontSize:mob?16:18,fontWeight:700,color:c}}>{v}</div>
             <div style={{fontSize:11,color:"var(--hmg-ink)",marginTop:3}}>{l}</div>
           </div>
@@ -1729,7 +1729,7 @@ function Accounting({ t, samples, setSamples }) {
           const margin=Number(s.salePrice||0)-Number(s.labCost||0);
           const rem=Number(s.salePrice||0)-Number(s.deposit||0);
           return (
-            <div key={s.id} style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:14,marginBottom:10}}>
+            <div key={s.id} style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:14,marginBottom:10}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
                 <div style={{color:"var(--hmg-ink)",fontWeight:600}}>{s.patientName}</div>
                 <span style={{background:"var(--hmg-surface)",color:"var(--hmg-ink)",borderRadius:6,padding:"2px 8px",fontSize:12,border:"1px solid var(--hmg-line)",boxShadow:"0 2px 4px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04)"}}>{t.payStatus[s.paymentStatus]}</span>
@@ -1749,7 +1749,7 @@ function Accounting({ t, samples, setSamples }) {
           );
         })
       ) : (
-        <div style={{background:"var(--hmg-surface-2)",borderRadius:12,border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",overflow:"auto"}}>
+        <div style={{background:"var(--hmg-surface-2)",borderRadius:12,border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",overflow:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:600}}>
             <thead>
               <tr style={{background:"var(--hmg-surface-2)"}}>
@@ -1763,7 +1763,7 @@ function Accounting({ t, samples, setSamples }) {
                 const margin=Number(s.salePrice||0)-Number(s.labCost||0);
                 const rem=Number(s.salePrice||0)-Number(s.deposit||0);
                 return (
-                  <tr key={s.id} style={{borderTop:"1px solid var(--hmg-line)",background:i%2===0?"#ffffff":"var(--hmg-surface-2)"}}>
+                  <tr key={s.id} style={{borderTop:"1px solid var(--hmg-line)",background:i%2===0?"var(--hmg-surface)":"var(--hmg-surface-2)"}}>
                     <td style={{padding:"10px 12px",color:"var(--hmg-ink)",fontFamily:TOK.mono}}>{s.sampleCode}</td>
                     <td style={{padding:"10px 12px",color:"var(--hmg-ink)",fontWeight:500}}>{s.patientName}</td>
                     <td style={{padding:"10px 12px",color:"#0F6E56"}}>{fmt(s.salePrice)}</td>
@@ -1799,7 +1799,7 @@ function Reports({ t, samples }) {
     <div>
       <h2 style={{color:"var(--hmg-ink)",fontSize:mob?17:21,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px"}}>{t.reports.title}</h2>
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14,marginBottom:14}}>
-        <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
+        <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
           <div style={{fontWeight:600,color:"var(--hmg-ink)",marginBottom:14,display:"flex",alignItems:"center",gap:7}}><Icon name="sheet" size={16} color={TOK.primary}/> {t.reports.byStatus}</div>
           {Object.entries(t.statuses).map(([k,label])=>{
             const c=samples.filter(s=>s.status===k).length;
@@ -1816,7 +1816,7 @@ function Reports({ t, samples }) {
             );
           })}
         </div>
-        <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
+        <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
           <div style={{fontWeight:600,color:"var(--hmg-ink)",marginBottom:14}}>🏥 {t.reports.byLab}</div>
           {[...new Set(samples.map(s=>s.externalLab).filter(Boolean))].map((lab,i)=>{
             const c=samples.filter(s=>s.externalLab===lab).length;
@@ -1978,7 +1978,7 @@ function ClientsPage({ t, samples, isAdmin }) {
       </div>
 
       {/* ── Filters bar ── */}
-      <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:18}}>
+      <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:18}}>
         {/* Quick presets */}
         <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
           <span style={{fontSize:12,fontWeight:600,color:"var(--hmg-ink2)",marginInlineEnd:4}}>{ar?"فترة سريعة:":"Quick:"}</span>
@@ -2104,7 +2104,7 @@ function ClientsPage({ t, samples, isAdmin }) {
                         {/* Per-sample list */}
                         <div style={{maxHeight:280,overflowY:"auto"}}>
                           {ps.map((s,i)=>(
-                            <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:i%2===0?"var(--hmg-subtle)":"#ffffff",borderRadius:8,marginBottom:4,gap:8}}>
+                            <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:i%2===0?"var(--hmg-subtle)":"var(--hmg-surface)",borderRadius:8,marginBottom:4,gap:8}}>
                               <div style={{minWidth:0,flex:1}}>
                                 <div style={{fontWeight:600,fontSize:12,color:"var(--hmg-ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.patientName}</div>
                                 <div style={{fontSize:10,color:"var(--hmg-muted)",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -2179,7 +2179,7 @@ function ClientsPage({ t, samples, isAdmin }) {
               const paid = samps.filter(s=>s.paymentStatus==="paid").length;
               const totalRev = samps.reduce((a,s)=>a+Number(s.salePrice||0),0);
               return (
-                <div key={name} style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
+                <div key={name} style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:16}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                     <div style={{minWidth:0}}>
                       <div style={{fontWeight:700,fontSize:14,color:"var(--hmg-ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</div>
@@ -2419,7 +2419,7 @@ function ResultsPage({ t, samples, setSamples }) {
                 {s.resultNote && (
                   <div style={{marginTop:12}}>
                     <div style={{fontSize:12,fontWeight:600,color:"var(--hmg-ink2)",marginBottom:4}}>{ar?"الملاحظات":"Notes"}</div>
-                    <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--hmg-ink)",lineHeight:1.6}}>{s.resultNote}</div>
+                    <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,padding:"10px 12px",fontSize:13,color:"var(--hmg-ink)",lineHeight:1.6}}>{s.resultNote}</div>
                   </div>
                 )}
                 {s.resultPdf && (
@@ -2665,7 +2665,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
         <div style={{padding:"14px 16px",background:isSelected?"var(--hmg-tint)":"var(--hmg-surface-2)",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}
           onClick={()=>setSelected(isSelected?null:shipNum)}>
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
-            <div style={{width:36,height:36,borderRadius:10,background:isSelected?"#0F6E56":"#EDF1EF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <div style={{width:36,height:36,borderRadius:10,background:isSelected?"#0F6E56":"var(--hmg-line)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               <Icon name="truck" size={19} color={isSelected?"#fff":"#5B6B67"}/>
             </div>
             <div style={{minWidth:0}}>
@@ -3033,7 +3033,7 @@ function ShipmentsPage({ t, samples, setSamples, onRefresh }) {
                 </div>
               ) : (
                 <button onClick={()=>{setEditingShipment(s.id);setNewShipNum("");}}
-                  style={{background:"var(--hmg-surface-2)",color:"var(--hmg-muted)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,flexShrink:0,whiteSpace:"nowrap"}}>
+                  style={{background:"var(--hmg-surface-2)",color:"var(--hmg-muted)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,flexShrink:0,whiteSpace:"nowrap"}}>
                   + {ar?"أضف رقم شحنة":"Add shipment #"}
                 </button>
               )}
@@ -3075,7 +3075,7 @@ function AddTestPage({ t }) {
     <div style={{maxWidth:700,margin:"0 auto"}}>
       <h2 style={{color:TOK.ink,fontSize:mob?18:22,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px",display:"flex",alignItems:"center",gap:9}}><Icon name="microscope" size={20} color={TOK.primary}/> {t.nav.addTest}</h2>
       {saved && <div style={{background:"var(--hmg-subtle)",border:"1px solid var(--hmg-line)",borderRadius:10,padding:"12px 16px",marginBottom:16,color:"#15803d",fontWeight:600}}>✓ {t.dir==="rtl"?"تم الحفظ":"Saved!"}</div>}
-      <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20}}>
+      <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20}}>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"0 18px"}}>
           <Field label={t.dir==="rtl"?"اسم الفحص *":"Test Name *"}>
             <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder={t.dir==="rtl"?"مثال: Vitamin C":"e.g. Vitamin C"} style={inp()}/>
@@ -3098,7 +3098,7 @@ function AddTestPage({ t }) {
       </div>
       {/* Tests saved - no list shown here, they appear in Test Type dropdown */}
       {saved && tests.length > 0 && (
-        <div style={{padding:"10px 14px",background:"var(--hmg-surface-2)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,fontSize:12,color:"var(--hmg-muted)",display:"flex",alignItems:"center",gap:8}}>
+        <div style={{padding:"10px 14px",background:"var(--hmg-surface-2)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,fontSize:12,color:"var(--hmg-muted)",display:"flex",alignItems:"center",gap:8}}>
           <span style={{color:"#22c55e"}}>✓</span>
           {t.dir==="rtl"?`تم إضافة "${tests[tests.length-1]?.name}" — ستظهر في قائمة نوع الفحص`:`"${tests[tests.length-1]?.name}" added — now available in Test Type dropdown`}
         </div>
@@ -3298,7 +3298,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
       <h2 style={{color:TOK.ink,fontSize:mob?18:22,fontWeight:700,marginBottom:20,letterSpacing:"-0.4px",display:"flex",alignItems:"center",gap:9}}><Icon name="receipt" size={20} color={TOK.primary}/> {t.nav.invoice}</h2>
 
       {/* Filters */}
-      <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+      <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr 1fr",gap:12,alignItems:"end"}}>
           <div>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--hmg-ink2)",marginBottom:5}}><Icon name="calendar" size={13} style={{marginInlineEnd:5,verticalAlign:"-2px"}}/>{ar?"من":"From"}</label>
@@ -3327,7 +3327,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
         </div>
         <div style={{marginTop:12,display:"flex",gap:10,flexWrap:"wrap"}}>
           {[[ar?"إجمالي العينات":"Samples",filtered.length,"#0F6E56"],[ar?"عملاء":"Clients",Object.keys(byClient).length,"#0F8A5F"],[ar?"الإيرادات":"Revenue",fmt(filtered.reduce((a,s)=>a+Number(s.salePrice||0),0))+" EGP","#8b5cf6"]].map(([l,v,c],i)=>(
-            <div key={i} style={{background:c+"11",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,padding:"8px 16px",flex:1,minWidth:90}}>
+            <div key={i} style={{background:c+"11",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,padding:"8px 16px",flex:1,minWidth:90}}>
               <div style={{fontWeight:700,color:c,fontSize:15}}>{v}</div>
               <div style={{fontSize:11,color:"var(--hmg-muted)",marginTop:1}}>{l}</div>
             </div>
@@ -3403,7 +3403,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
                   {displayItems.map((s,i)=>{
                     const excluded = isEditing && !s._include;
                     return (
-                      <tr key={s.id} style={{borderTop:"1px solid var(--hmg-line)",opacity:excluded?0.3:1,background:i%2===0?"#fff":"var(--hmg-surface-2)",transition:"opacity .2s"}}>
+                      <tr key={s.id} style={{borderTop:"1px solid var(--hmg-line)",opacity:excluded?0.3:1,background:i%2===0?"var(--hmg-surface)":"var(--hmg-surface-2)",transition:"opacity .2s"}}>
                         {isEditing && (
                           <td style={{padding:"9px 10px",textAlign:"center"}}>
                             <button onClick={()=>toggleItem(s.id)} style={{width:22,height:22,borderRadius:6,border:`2px solid ${s._include?"#0F6E56":"var(--hmg-line)"}`,background:s._include?"#0F6E56":"#fff",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,padding:0}}>
@@ -3422,7 +3422,7 @@ function InvoicePage({ t, samples, setSamples, isAdmin }) {
                           <td style={{padding:"9px 12px",textAlign:"end"}}>
                             {isEditing ? (
                               <input type="number" value={s.salePrice||""} onChange={e=>updateField(s.id,"salePrice",e.target.value)}
-                                style={{width:88,background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:6,padding:"4px 8px",fontSize:12,textAlign:"end",color:"var(--hmg-ink)"}}/>
+                                style={{width:88,background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:6,padding:"4px 8px",fontSize:12,textAlign:"end",color:"var(--hmg-ink)"}}/>
                             ) : <span style={{fontWeight:600,color:"#0F6E56"}}>{fmt(s.salePrice)} EGP</span>}
                           </td>
                         )}
@@ -3627,7 +3627,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
 
       {/* Supabase status - admin only */}
       {isAdmin && (
-        <div style={{marginBottom:20,padding:"10px 14px",background:"var(--hmg-surface-2)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
+        <div style={{marginBottom:20,padding:"10px 14px",background:"var(--hmg-surface-2)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:8,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:supaStatus==="connected"?"#22c55e":supaStatus==="empty"?"#B26B00":supaStatus==="checking"?"var(--hmg-line)":"#ef4444"}}/>
           <span style={{color:"var(--hmg-ink2)"}}>
             Supabase: {supaStatus==="connected"?(ar?"متصل ✓":"Connected ✓"):supaStatus==="empty"?(ar?"متصل — لا يوجد بيانات محفوظة بعد":"Connected — no users saved yet"):supaStatus==="checking"?(ar?"جاري الفحص...":"Checking..."):supaStatus}
@@ -3645,7 +3645,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
 
       {/* Global message */}
       {msg.text && (
-        <div style={{display:"flex",alignItems:"center",gap:9,background:msg.type==="error"?"var(--hmg-bg-danger)":"var(--hmg-tint)",border:`1px solid ${msg.type==="error"?"#F3D3D3":"#C4E9DF"}`,borderRadius:10,padding:"12px 16px",marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:9,background:msg.type==="error"?"var(--hmg-bg-danger)":"var(--hmg-tint)",border:`1px solid ${msg.type==="error"?"#F3D3D3":"var(--hmg-line)"}`,borderRadius:10,padding:"12px 16px",marginBottom:20}}>
           <Icon name={msg.type==="error"?"alert":"checkCircle"} size={16} color={msg.type==="error"?"#C7362F":"#0F8A5F"}/>
           <span style={{color:msg.type==="error"?"var(--hmg-text-danger)":"#0F6E56",fontWeight:600,fontSize:13}}>{msg.text}</span>
         </div>
@@ -3711,7 +3711,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
         </div>
       )}
 
-      <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
+      <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
         {(isAdmin ? users : users.filter(u=>u.username===currentUser.username)).map((u,idx) => {
           const isEditing = editingUser === u.username;
           const isSelf = currentUser.username === u.username;
@@ -3732,7 +3732,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontWeight:700,color:"var(--hmg-ink)",fontSize:14}}>{u.username}</span>
                       {isSelf && <span style={{background:TOK.primary,color:"#fff",borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:600,letterSpacing:"0.3px"}}>{ar?"أنت":"YOU"}</span>}
-                      <span style={{background:"var(--hmg-subtle)",color:"var(--hmg-muted)",borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:500,letterSpacing:"0.2px",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)"}}>
+                      <span style={{background:"var(--hmg-subtle)",color:"var(--hmg-muted)",borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:500,letterSpacing:"0.2px",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)"}}>
                         {u.role==="admin"?(ar?"مدير":"ADMIN"):(ar?"مستخدم":"USER")}
                       </span>
                     </div>
@@ -3847,7 +3847,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
       {/* ── Logout ── */}
       <div style={{marginTop:32}}>
         <div style={{fontSize:11,fontWeight:600,color:"var(--hmg-muted)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:12}}>{ar?"الحساب":"ACCOUNT"}</div>
-        <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
+        <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
           <div style={{padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <div style={{width:42,height:42,borderRadius:"50%",background:"var(--hmg-subtle)",border:"1px solid var(--hmg-line)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
@@ -3874,7 +3874,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
       </div>
 
       {/* ── Email ── */}
-      <div style={{marginTop:20,background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,overflow:"hidden"}}>
+      <div style={{marginTop:20,background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,overflow:"hidden"}}>
         <div onClick={()=>setEmailSection(e=>!e)}
           style={{padding:"14px 18px",borderBottom:emailSection?"1px solid var(--hmg-line)":"none",fontWeight:700,color:TOK.ink,fontSize:15,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",userSelect:"none"}}>
           <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="mail" size={17} color={TOK.primary}/> {ar?"البريد الإلكتروني":"Email"}</span>
@@ -3884,7 +3884,7 @@ function SettingsPage({ t, currentUser, setCurrentUser, isAdmin, onLogout }) {
         {emailSection && (
           <div style={{padding:"18px"}}>
             {emailMsg.text && (
-              <div style={{background:emailMsg.type==="error"?"var(--hmg-bg-danger)":"var(--hmg-tint)",border:`1px solid ${emailMsg.type==="error"?"#F3D3D3":"#C4E9DF"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:emailMsg.type==="error"?"var(--hmg-text-danger)":"#0F6E56",fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:8}}>
+              <div style={{background:emailMsg.type==="error"?"var(--hmg-bg-danger)":"var(--hmg-tint)",border:`1px solid ${emailMsg.type==="error"?"#F3D3D3":"var(--hmg-line)"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:emailMsg.type==="error"?"var(--hmg-text-danger)":"#0F6E56",fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:8}}>
                 <Icon name={emailMsg.type==="error"?"alert":"checkCircle"} size={15} color={emailMsg.type==="error"?"#C7362F":"#0F8A5F"}/> {emailMsg.text}
               </div>
             )}
@@ -4358,7 +4358,7 @@ function TestsPage({ t, isAdmin }) {
       </div>
 
       {showAdd && isAdmin && (
-        <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+        <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
           <div style={{fontSize:11,fontWeight:600,color:"var(--hmg-muted)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:16}}>
             {ar?"فحص جديد":"NEW TEST"}
           </div>
@@ -4407,7 +4407,7 @@ function TestsPage({ t, isAdmin }) {
       )}
 
       {/* Currency Converter Bar */}
-      <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+      <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
         <span style={{fontSize:12,fontWeight:600,color:"var(--hmg-ink2)",flexShrink:0}}>{ar?"عرض الأسعار بـ":"Show prices in"}</span>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",flex:1}}>
           {currencies.map(c=>(
@@ -4455,7 +4455,7 @@ function TestsPage({ t, isAdmin }) {
             const dispPrice = displayCurrency==="original" ? effPrice : convertPrice(effPrice, test.currency);
             const dispCurrency = displayCurrency==="original" ? (test.currency||"USD") : displayCurrency;
             return (
-              <div key={i} style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:10,padding:"12px 14px"}}>
+              <div key={i} style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:10,padding:"12px 14px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:600,color:"var(--hmg-ink)",fontSize:13,lineHeight:1.4}}>{test.name}</div>
@@ -4496,7 +4496,7 @@ function TestsPage({ t, isAdmin }) {
         </div>
       ) : (
         // Desktop: table layout
-        <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+        <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
           <thead>
             <tr style={{background:"var(--hmg-surface-2)",borderBottom:"1.5px solid var(--hmg-line)"}}>
@@ -4514,7 +4514,7 @@ function TestsPage({ t, isAdmin }) {
               <tr><td colSpan={7} style={{padding:32,textAlign:"center",color:"var(--hmg-muted)",fontSize:13}}>{ar?"لا توجد نتائج":"No results found"}</td></tr>
             )}
             {filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE).map((test, i) => (
-              <tr key={i} style={{borderTop:"1px solid #f5f5f5",background:i%2===0?"#fff":"var(--hmg-surface-2)"}}>
+              <tr key={i} style={{borderTop:"1px solid #f5f5f5",background:i%2===0?"var(--hmg-surface)":"var(--hmg-surface-2)"}}>
                 <td style={{padding:"10px 16px",color:"var(--hmg-muted)",fontSize:12}}>{i+1}</td>
                 <td style={{padding:"10px 16px"}}>
                   <div style={{fontWeight:500,color:"var(--hmg-ink)"}}>{test.name}</div>
@@ -4769,7 +4769,7 @@ function ClientsBookPage({ t, isAdmin }) {
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+        <div style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:14,padding:mob?16:24,marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
           <div style={{fontSize:11,fontWeight:600,color:"var(--hmg-muted)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:16}}>
             {editing?(ar?"تعديل العميل":"EDIT CLIENT"):(ar?"عميل جديد":"NEW CLIENT")}
           </div>
@@ -4839,7 +4839,7 @@ function ClientsBookPage({ t, isAdmin }) {
       ) : (
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
           {filtered.map(c => (
-            <div key={c.id} style={{background:"var(--hmg-surface)",border:"1px solid #E4ECE9",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:18,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div key={c.id} style={{background:"var(--hmg-surface)",border:"1px solid var(--hmg-line)",boxShadow:"0 1px 2px rgba(16,32,30,0.05)",borderRadius:12,padding:18,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <div style={{width:42,height:42,borderRadius:"50%",background:"#111",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
