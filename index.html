@@ -1377,11 +1377,27 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      const parsed = smartParseExcel(rows);
-      if (!parsed.records.length) { toast(ar?"لم يتم العثور على بيانات صالحة":"No valid rows found","warning"); setImporting(false); if (fileRef.current) fileRef.current.value = ""; return; }
-      setImportData({ ...parsed, fileName: file.name });
+      // Read and parse EVERY sheet — each sheet gets its own column mapping,
+      // then all records are merged into one import.
+      const allRecords = [];
+      const sheetsInfo = [];
+      const mergedMapping = {};
+      const unmatchedSet = new Set();
+      let totalSkipped = 0;
+      for (const sheetName of wb.SheetNames) {
+        const ws = wb.Sheets[sheetName];
+        if (!ws) continue;
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        if (!rows.length) { sheetsInfo.push({ name: sheetName, count: 0 }); continue; }
+        const parsed = smartParseExcel(rows);
+        parsed.records.forEach(r => allRecords.push(r));
+        sheetsInfo.push({ name: sheetName, count: parsed.records.length });
+        Object.entries(parsed.mapping).forEach(([f, h]) => { if (!mergedMapping[f]) mergedMapping[f] = h; });
+        parsed.unmatched.forEach(h => unmatchedSet.add(h));
+        totalSkipped += parsed.skipped;
+      }
+      if (!allRecords.length) { toast(ar?"لم يتم العثور على بيانات صالحة":"No valid rows found","warning"); setImporting(false); if (fileRef.current) fileRef.current.value = ""; return; }
+      setImportData({ records: allRecords, mapping: mergedMapping, unmatched: [...unmatchedSet], skipped: totalSkipped, sheets: sheetsInfo, fileName: file.name });
     } catch(err) {
       toast((ar?"خطأ في قراءة الملف: ":"Error reading file: ")+err.message,"error");
     }
@@ -1429,17 +1445,33 @@ function SamplesPage({ t, samples, setSamples, onEdit, onDelete, onAddNew, lang,
             </div>
 
             <div style={{padding:"16px 20px",overflowY:"auto"}}>
-              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:18}}>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
                 {[[importData.records.length, ar?"عينة جاهزة":"samples ready", TOK.primary],
+                  [(importData.sheets?importData.sheets.length:1), ar?"ورقة":"sheets read", SC.received],
                   [Object.keys(importData.mapping).length, ar?"عمود مطابق":"columns matched", SC.sent],
                   [importData.unmatched.length, ar?"عمود متجاهَل":"columns ignored", TOK.muted],
                   [importData.skipped, ar?"صف فارغ":"empty rows", SC.abroad]].map(([n,l,c],i)=>(
-                  <div key={i} style={{background:"var(--hmg-surface-2)",border:`1px solid ${TOK.line}`,borderRadius:10,padding:"9px 13px",minWidth:96}}>
+                  <div key={i} style={{background:"var(--hmg-surface-2)",border:`1px solid ${TOK.line}`,borderRadius:10,padding:"9px 13px",minWidth:92}}>
                     <div style={{...NUM,fontSize:21,fontWeight:600,color:c}}>{n}</div>
                     <div style={{fontSize:11,color:TOK.ink2,marginTop:1}}>{l}</div>
                   </div>
                 ))}
               </div>
+
+              {importData.sheets && importData.sheets.length>1 && (
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:11,fontWeight:600,color:TOK.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8}}>{ar?"الأوراق المقروءة":"Sheets read"}</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {importData.sheets.map((sh,i)=>(
+                      <div key={i} style={{display:"inline-flex",alignItems:"center",gap:7,background:sh.count>0?"var(--hmg-tint)":"var(--hmg-surface-2)",border:`1px solid ${TOK.line}`,borderRadius:8,padding:"5px 11px",fontSize:12.5}}>
+                        <Icon name="sheet" size={13} color={sh.count>0?TOK.primary:TOK.muted}/>
+                        <span style={{color:TOK.ink,fontWeight:600}}>{sh.name}</span>
+                        <span style={{...NUM,color:sh.count>0?TOK.primary:TOK.muted,fontWeight:600}}>{sh.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div style={{fontSize:11,fontWeight:600,color:TOK.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8}}>{ar?"كيف تم توزيع الأعمدة":"How columns were mapped"}</div>
               <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"2px 16px",marginBottom:16}}>
